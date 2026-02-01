@@ -45,13 +45,17 @@ interface ConnectionTestResult {
   };
 }
 
-export function ConfiguracoesView() {
+interface ConfiguracoesViewProps {
+  onConfigChange?: (options?: { credentialsRemoved?: boolean }) => void;
+}
+
+export function ConfiguracoesView({ onConfigChange }: ConfiguracoesViewProps) {
   // User data state
   const [userData, setUserData] = useState<UserData | null>(null);
   const [credentials, setCredentials] = useState<BybitCredentials | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Form state
   const [showEditForm, setShowEditForm] = useState(false);
   const [apiKey, setApiKey] = useState('');
@@ -61,7 +65,7 @@ export function ConfiguracoesView() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<ConnectionTestResult | null>(null);
-  
+
   // Messages
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -75,17 +79,17 @@ export function ConfiguracoesView() {
 
     try {
       setIsLoading(true);
-      
+
       // Fetch user data
       const userResponse = await fetch(`${API_BASE_URL}/users/me`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
-      
+
       if (userResponse.ok) {
         const userData = await userResponse.json();
         setUserData(userData.data);
       }
-      
+
       // Always try to fetch credentials (will fail with 404 if not set)
       await fetchCredentials();
 
@@ -107,7 +111,7 @@ export function ConfiguracoesView() {
       const response = await fetch(`${API_BASE_URL}/users/bybit-credentials`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setCredentials(data.data);
@@ -129,7 +133,7 @@ export function ConfiguracoesView() {
       const syncResponse = await fetch(`${API_BASE_URL}/sync/status`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
-      
+
       if (syncResponse.ok) {
         const syncData = await syncResponse.json();
         setSyncStatus(syncData.data);
@@ -146,11 +150,11 @@ export function ConfiguracoesView() {
   // Poll sync status every 3 seconds if syncing
   useEffect(() => {
     if (syncStatus?.status !== 'running') return;
-    
+
     const interval = setInterval(() => {
       fetchSyncStatus();
     }, 3000);
-    
+
     return () => clearInterval(interval);
   }, [syncStatus?.status]);
 
@@ -199,9 +203,12 @@ export function ConfiguracoesView() {
       setApiKey('');
       setApiSecret('');
       setShowEditForm(false);
-      
+
       // Refresh data to show saved credentials
       await fetchData();
+
+      // Notify parent
+      onConfigChange?.();
     } catch (err) {
       showError(err instanceof Error ? err.message : 'Erro ao salvar credenciais');
     } finally {
@@ -295,7 +302,11 @@ export function ConfiguracoesView() {
       showSuccess('Credenciais removidas com sucesso!');
       setCredentials(null);
       setTestResult(null);
+      setTestResult(null);
       fetchData();
+
+      // Notify parent with credentialsRemoved flag
+      onConfigChange?.({ credentialsRemoved: true });
     } catch (err) {
       showError(err instanceof Error ? err.message : 'Erro ao remover credenciais');
     }
@@ -310,8 +321,8 @@ export function ConfiguracoesView() {
   // Check if user has configured bybit credentials
   // We check multiple sources: explicit flags from API, credentials object, or last_sync_at
   const isConfigured = !!(
-    userData?.has_bybit_credentials || 
-    userData?.bybit_configured || 
+    userData?.has_bybit_credentials ||
+    userData?.bybit_configured ||
     credentials?.api_key ||
     userData?.last_sync_at
   );
@@ -335,8 +346,8 @@ export function ConfiguracoesView() {
       {/* Status Card */}
       <Card className={cn(
         "p-5 border transition-all duration-200",
-        isConfigured 
-          ? testResult?.success === false 
+        isConfigured
+          ? testResult?.success === false
             ? "border-status-warning/30 bg-status-warning/5"
             : "border-status-success/30 bg-status-success/5"
           : "border-status-error/30 bg-status-error/5"
@@ -345,13 +356,13 @@ export function ConfiguracoesView() {
           <div className="flex items-center gap-4">
             <div className={cn(
               "w-12 h-12 rounded-xl flex items-center justify-center",
-              isConfigured 
+              isConfigured
                 ? testResult?.success === false
                   ? "bg-status-warning/20"
                   : "bg-status-success/20"
                 : "bg-status-error/20"
             )}>
-              {isConfigured ? 
+              {isConfigured ?
                 testResult?.success === false ? (
                   <AlertCircle className="w-6 h-6 text-status-warning" />
                 ) : (
@@ -363,16 +374,16 @@ export function ConfiguracoesView() {
             </div>
             <div>
               <h3 className="text-lg font-semibold text-text-primary">
-                {isConfigured 
-                  ? testResult?.success === false 
+                {isConfigured
+                  ? testResult?.success === false
                     ? 'Credenciais Salvas (Não Validadas)'
                     : 'Conectado à Bybit'
                   : 'Não Configurado'
                 }
               </h3>
               <p className="text-sm text-text-secondary">
-                {isConfigured 
-                  ? credentials 
+                {isConfigured
+                  ? credentials
                     ? `API Key: ${credentials.api_key}`
                     : 'Credenciais configuradas'
                   : 'Configure suas credenciais da API para sincronizar dados'}
@@ -391,17 +402,17 @@ export function ConfiguracoesView() {
                 <Trash2 className="w-4 h-4" />
               </Button>
             )}
-            <Badge 
-              variant={isConfigured ? 'default' : 'destructive'} 
+            <Badge
+              variant={isConfigured ? 'default' : 'destructive'}
               className={cn(
-                isConfigured 
+                isConfigured
                   ? testResult?.success === false
                     ? "bg-status-warning/20 text-status-warning border-status-warning/30"
                     : "bg-status-success/20 text-status-success border-status-success/30"
                   : "bg-status-error/20 text-status-error border-status-error/30"
               )}
             >
-              {isConfigured 
+              {isConfigured
                 ? testResult?.success === false ? 'NÃO VALIDADO' : 'CONFIGURADO'
                 : 'PENDENTE'
               }
@@ -413,8 +424,8 @@ export function ConfiguracoesView() {
         {testResult && (
           <div className={cn(
             "mt-4 p-4 rounded-lg border",
-            testResult.success 
-              ? "bg-status-success/10 border-status-success/20" 
+            testResult.success
+              ? "bg-status-success/10 border-status-success/20"
               : "bg-status-error/10 border-status-error/20"
           )}>
             <div className="flex items-start gap-3">
@@ -451,8 +462,8 @@ export function ConfiguracoesView() {
               <div className="flex items-center gap-2 text-sm text-text-secondary">
                 <Server className="w-4 h-4" />
                 <span>Status:</span>
-                <Badge 
-                  variant="outline" 
+                <Badge
+                  variant="outline"
                   className={cn(
                     "text-xs",
                     syncStatus?.status === 'running' && "bg-action-primary/10 text-action-primary border-action-primary/30",
@@ -467,7 +478,7 @@ export function ConfiguracoesView() {
                   {syncStatus?.status === 'failed' && 'Falhou'}
                 </Badge>
               </div>
-              
+
               <div className="flex items-center gap-2 text-sm text-text-muted">
                 <span>Última sync:</span>
                 <span>{formatLastSync(syncStatus?.last_sync_at ?? userData?.last_sync_at ?? null)}</span>
@@ -475,9 +486,9 @@ export function ConfiguracoesView() {
 
               <div className="ml-auto flex items-center gap-2">
                 {isConfigured && (
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
+                  <Button
+                    size="sm"
+                    variant="outline"
                     onClick={handleTestConnection}
                     disabled={isTesting}
                     className="border-border-default hover:bg-surface-card-alt"
@@ -486,8 +497,8 @@ export function ConfiguracoesView() {
                     {isTesting ? 'Testando...' : 'Testar Conexão'}
                   </Button>
                 )}
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   onClick={handleSync}
                   disabled={isSyncing || syncStatus?.status === 'running'}
                   className="bg-action-primary hover:bg-action-primary-hover"
@@ -497,7 +508,7 @@ export function ConfiguracoesView() {
                 </Button>
               </div>
             </div>
-            
+
             {syncStatus?.progress && syncStatus.status === 'running' && (
               <div className="mt-3">
                 <div className="flex justify-between text-xs text-text-muted mb-1">
@@ -505,7 +516,7 @@ export function ConfiguracoesView() {
                   <span>{syncStatus.progress.current} / {syncStatus.progress.total}</span>
                 </div>
                 <div className="h-1.5 bg-surface-card-alt rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-action-primary rounded-full transition-all duration-300"
                     style={{ width: `${(syncStatus.progress.current / syncStatus.progress.total) * 100}%` }}
                   />
@@ -560,8 +571,8 @@ export function ConfiguracoesView() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => setShowEditForm(true)}
                         className="border-border-default hover:bg-surface-card"
@@ -606,13 +617,13 @@ export function ConfiguracoesView() {
                       <Label htmlFor="apiKey" className="block text-sm font-medium text-text-secondary mb-2">
                         API Key
                       </Label>
-                      <Input 
+                      <Input
                         id="apiKey"
-                        type="text" 
-                        placeholder="Digite sua API Key" 
-                        value={apiKey} 
-                        onChange={(e) => setApiKey(e.target.value)} 
-                        className="bg-surface-input border-border-default h-11" 
+                        type="text"
+                        placeholder="Digite sua API Key"
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                        className="bg-surface-input border-border-default h-11"
                       />
                     </div>
 
@@ -622,17 +633,17 @@ export function ConfiguracoesView() {
                         API Secret
                       </Label>
                       <div className="relative">
-                        <Input 
+                        <Input
                           id="apiSecret"
-                          type={showSecret ? 'text' : 'password'} 
-                          placeholder="Digite seu API Secret" 
-                          value={apiSecret} 
-                          onChange={(e) => setApiSecret(e.target.value)} 
-                          className="bg-surface-input border-border-default pr-10 h-11" 
+                          type={showSecret ? 'text' : 'password'}
+                          placeholder="Digite seu API Secret"
+                          value={apiSecret}
+                          onChange={(e) => setApiSecret(e.target.value)}
+                          className="bg-surface-input border-border-default pr-10 h-11"
                         />
-                        <button 
-                          type="button" 
-                          onClick={() => setShowSecret(!showSecret)} 
+                        <button
+                          type="button"
+                          onClick={() => setShowSecret(!showSecret)}
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
                         >
                           {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -642,9 +653,9 @@ export function ConfiguracoesView() {
 
                     {/* Action Buttons */}
                     <div className="flex gap-3 pt-2">
-                      <Button 
-                        onClick={handleSaveCredentials} 
-                        disabled={isSaving || !apiKey || !apiSecret} 
+                      <Button
+                        onClick={handleSaveCredentials}
+                        disabled={isSaving || !apiKey || !apiSecret}
                         className="flex-1 bg-action-primary hover:bg-action-primary-hover h-11"
                       >
                         {isSaving ? (
@@ -654,8 +665,8 @@ export function ConfiguracoesView() {
                         )}
                       </Button>
                       {isConfigured && (
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           onClick={() => setShowEditForm(false)}
                           className="border-border-default hover:bg-surface-card-alt h-11"
                         >

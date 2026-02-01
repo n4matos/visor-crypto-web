@@ -3,7 +3,7 @@ import type { View } from '@/types';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
-import { 
+import {
   DashboardView,
   CurvasView,
   FundingView,
@@ -12,9 +12,11 @@ import {
   PosicoesView,
   ConfiguracoesView,
   AuthView,
+  LandingView,
+  OnboardingView,
 } from '@/views';
 import { cn } from '@/lib/utils';
-import { 
+import {
   TrendingUp,
   LayoutDashboard,
   DollarSign,
@@ -47,6 +49,8 @@ const PAGE_TITLES: Record<View, string> = {
   posicoes: 'Posições Abertas',
   configuracoes: 'Configurações',
   auth: 'Autenticação',
+  landing: 'Início',
+  onboarding: 'Boas Vindas',
 };
 
 interface NavItem {
@@ -81,6 +85,7 @@ export default function App() {
     lastSync: null,
     apiKey: null,
   });
+  const [connectionLoading, setConnectionLoading] = useState(true);
   const { theme, toggleTheme } = useTheme();
   const { isAuthenticated, isLoading: authLoading, login, register, logout, error, clearError } = useAuth();
 
@@ -88,7 +93,10 @@ export default function App() {
   useEffect(() => {
     const fetchConnectionStatus = async () => {
       const token = localStorage.getItem(TOKEN_KEY);
-      if (!token) return;
+      if (!token) {
+        setConnectionLoading(false);
+        return;
+      }
 
       try {
         // Fetch user data to check if has credentials
@@ -98,11 +106,11 @@ export default function App() {
 
         if (userResponse.ok) {
           const userData = await userResponse.json();
-          
+
           // Check multiple possible field names from backend
-          const hasCredentials = userData.data?.has_bybit_credentials || 
-                                userData.data?.bybit_configured || 
-                                userData.data?.has_credentials;
+          const hasCredentials = userData.data?.has_bybit_credentials ||
+            userData.data?.bybit_configured ||
+            userData.data?.has_credentials;
           const lastSync = userData.data?.last_sync_at;
 
           // Consider connected if has credentials (same logic as ConfiguracoesView)
@@ -126,27 +134,106 @@ export default function App() {
             lastSync: lastSync,
             apiKey: apiKey,
           });
+
+          // Redirect to onboarding if authenticated but not connected
+          // We only do this check on initial load (or when auth changes) to prevent 
+          // interrupting user if they disconnect manually later (though manual disconnect handles its own flow)
+          if (!isConnected && isAuthenticated) {
+            setCurrentView('onboarding');
+          }
         }
       } catch (err) {
         console.error('Failed to fetch connection status:', err);
+      } finally {
+        setConnectionLoading(false);
       }
     };
 
+    // Reset loading state when auth changes
+    setConnectionLoading(true);
+    
     // Fetch immediately and whenever auth state changes
     fetchConnectionStatus();
-    
+
     // Poll every 30 seconds
+    // Store interval ID to clear it later if needed, though cleanup handles it
     const interval = setInterval(fetchConnectionStatus, 30000);
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 
+  // Expose fetchConnectionStatus as a lightweight callback for children
+  const refreshConnection = useCallback(async (options?: { credentialsRemoved?: boolean }) => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return;
+
+    try {
+      const userResponse = await fetch(`${API_BASE_URL}/users/me`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        const hasCredentials = userData.data?.has_bybit_credentials ||
+          userData.data?.bybit_configured ||
+          userData.data?.has_credentials;
+        const lastSync = userData.data?.last_sync_at;
+        const isConnected = !!(hasCredentials || lastSync);
+
+        let apiKey = null;
+        if (hasCredentials) {
+          const credResponse = await fetch(`${API_BASE_URL}/users/bybit-credentials`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+          });
+          if (credResponse.ok) {
+            const credData = await credResponse.json();
+            apiKey = credData.data?.api_key;
+          }
+        }
+
+        setConnectionStatus({
+          connected: isConnected,
+          exchange: 'Bybit',
+          lastSync: lastSync,
+          apiKey: apiKey,
+        });
+
+        // Redirect to onboarding if credentials were removed
+        if (options?.credentialsRemoved) {
+          setCurrentView('onboarding');
+          return;
+        }
+
+        // Redirect to onboarding if no credentials and not already there
+        // Also allow staying in configuracoes view to re-add credentials
+        if (!isConnected && currentView !== 'onboarding' && currentView !== 'configuracoes') {
+          setCurrentView('onboarding');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to refresh connection status:', err);
+    }
+  }, [currentView]);
+
   const [currentTime, setCurrentTime] = useState(() => Date.now());
-  
+
   useEffect(() => {
     const interval = setInterval(() => setCurrentTime(Date.now()), 60000);
     return () => clearInterval(interval);
   }, []);
-  
+
+  // Redirect to onboarding when credentials are removed
+  useEffect(() => {
+    // Only redirect after connection status has been checked (not during initial loading)
+    if (isAuthenticated && !connectionStatus.connected && !authLoading && !connectionLoading) {
+      // Only redirect if user is in a view that requires connection
+      // Allow configuracoes view so user can re-add credentials
+      const viewsRequiringConnection: View[] = ['dashboard', 'curvas', 'funding', 'taxas', 'historico', 'posicoes'];
+      if (viewsRequiringConnection.includes(currentView)) {
+        setCurrentView('onboarding');
+      }
+    }
+  }, [connectionStatus.connected, isAuthenticated, authLoading, currentView, connectionLoading]);
+
   const timeAgo = useMemo(() => {
     if (!connectionStatus.lastSync) return null;
     const lastSync = new Date(connectionStatus.lastSync);
@@ -154,28 +241,63 @@ export default function App() {
   }, [currentTime, connectionStatus.lastSync]);
 
   const handleLogin = useCallback(async (email: string, password: string): Promise<boolean> => {
-    return await login({ email, password });
+    const success = await login({ email, password });
+    if (success) {
+      // Check if user has Bybit credentials to determine where to redirect
+      const token = localStorage.getItem(TOKEN_KEY);
+      if (token) {
+        try {
+          const userResponse = await fetch(`${API_BASE_URL}/users/me`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+          });
+          
+          if (userResponse.ok) {
+            const userData = await userResponse.json();
+            const hasCredentials = userData.data?.has_bybit_credentials ||
+              userData.data?.bybit_configured ||
+              userData.data?.has_credentials;
+            
+            if (hasCredentials) {
+              setCurrentView('dashboard');
+            } else {
+              setCurrentView('onboarding');
+            }
+            return true;
+          }
+        } catch (err) {
+          console.error('Failed to fetch user after login:', err);
+        }
+      }
+      // Fallback to dashboard if we can't determine credentials status
+      setCurrentView('dashboard');
+    }
+    return success;
   }, [login]);
 
   const handleRegister = useCallback(async (email: string, password: string): Promise<boolean> => {
-    return await register({ email, password });
+    const success = await register({ email, password });
+    if (success) {
+      // New users don't have credentials, redirect to onboarding
+      setCurrentView('onboarding');
+    }
+    return success;
   }, [register]);
 
   const handleLogout = useCallback(() => {
     logout();
-    setCurrentView('dashboard');
+    setCurrentView('landing');
   }, [logout]);
 
   const renderView = () => {
     switch (currentView) {
-      case 'dashboard': return <DashboardView />;
+      case 'dashboard': return <DashboardView connected={connectionStatus.connected} />;
       case 'curvas': return <CurvasView />;
       case 'funding': return <FundingView />;
       case 'taxas': return <TaxasView />;
       case 'historico': return <HistoricoView />;
-      case 'posicoes': return <PosicoesView />;
-      case 'configuracoes': return <ConfiguracoesView />;
-      default: return <DashboardView />;
+      case 'posicoes': return <PosicoesView connected={connectionStatus.connected} />;
+      case 'configuracoes': return <ConfiguracoesView onConfigChange={refreshConnection} />;
+      default: return <DashboardView connected={connectionStatus.connected} />;
     }
   };
 
@@ -196,16 +318,52 @@ export default function App() {
     );
   }
 
-  // Show Auth view if not authenticated
+  // Show Auth/Landing view if not authenticated
   if (!isAuthenticated) {
+    if (currentView === 'auth') {
+      return (
+        <AuthView
+          onLogin={handleLogin}
+          onRegister={handleRegister}
+          isLoading={authLoading}
+          error={error}
+          onClearError={clearError}
+          onBack={() => setCurrentView('landing')}
+        />
+      );
+    }
+
     return (
-      <AuthView
-        onLogin={handleLogin}
-        onRegister={handleRegister}
-        isLoading={authLoading}
-        error={error}
-        onClearError={clearError}
+      <LandingView
+        onLogin={() => setCurrentView('auth')}
+        onRegister={() => setCurrentView('auth')}
       />
+    );
+  }
+
+  // Handle Onboarding View (No Sidebar/Header layout)
+  if (currentView === 'onboarding') {
+    return (
+      <div className="min-h-screen bg-surface-page flex flex-col">
+        <Header
+          title="Boas Vindas"
+          theme={theme}
+          onThemeToggle={toggleTheme}
+          timeAgo={null}
+          onMobileMenuOpen={() => { }}
+          connected={false}
+          exchange="Bybit"
+          onLogout={handleLogout}
+        />
+        <div className="flex-1 flex items-center justify-center p-4">
+          <OnboardingView
+            onComplete={() => {
+              refreshConnection();
+              setCurrentView('dashboard');
+            }}
+          />
+        </div>
+      </div>
     );
   }
 
@@ -213,9 +371,9 @@ export default function App() {
     <div className="min-h-screen bg-surface-page">
       {/* Mobile Overlay */}
       {mobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden" 
-          onClick={() => setMobileMenuOpen(false)} 
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setMobileMenuOpen(false)}
         />
       )}
 
@@ -223,7 +381,7 @@ export default function App() {
       <MobileHeader onMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} isOpen={mobileMenuOpen} />
 
       {/* Sidebar */}
-      <Sidebar 
+      <Sidebar
         currentView={currentView}
         onNavClick={handleNavClick}
         collapsed={sidebarCollapsed}
@@ -238,7 +396,7 @@ export default function App() {
         sidebarCollapsed ? "lg:ml-20" : "lg:ml-64"
       )}>
         {/* Header */}
-        <Header 
+        <Header
           title={PAGE_TITLES[currentView]}
           theme={theme}
           onThemeToggle={toggleTheme}
@@ -365,12 +523,12 @@ interface NavButtonProps {
 
 function NavButton({ icon, label, isActive, collapsed, onClick }: NavButtonProps) {
   return (
-    <button 
-      onClick={onClick} 
+    <button
+      onClick={onClick}
       className={cn(
         "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 hover:bg-surface-card-alt group",
-        isActive 
-          ? "bg-action-primary-muted text-action-primary border border-action-primary/30" 
+        isActive
+          ? "bg-action-primary-muted text-action-primary border border-action-primary/30"
           : "text-text-secondary border border-transparent"
       )}
     >
@@ -396,9 +554,10 @@ interface HeaderProps {
   onMobileMenuOpen: () => void;
   connected: boolean;
   exchange: string;
+  onLogout?: () => void;
 }
 
-function Header({ title, theme, onThemeToggle, timeAgo, onMobileMenuOpen, connected, exchange }: HeaderProps) {
+function Header({ title, theme, onThemeToggle, timeAgo, onMobileMenuOpen, connected, exchange, onLogout }: HeaderProps) {
   return (
     <header className="h-16 bg-surface-sidebar/80 backdrop-blur-md border-b border-border-default flex items-center justify-between px-4 lg:px-6 sticky top-0 z-20">
       <div className="flex items-center gap-4">
@@ -409,11 +568,11 @@ function Header({ title, theme, onThemeToggle, timeAgo, onMobileMenuOpen, connec
       </div>
       <div className="flex items-center gap-4">
         <ConnectionStatus timeAgo={timeAgo} connected={connected} exchange={exchange} />
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={onThemeToggle} 
-          className="hover:bg-surface-card-alt" 
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onThemeToggle}
+          className="hover:bg-surface-card-alt"
           title={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
         >
           {theme === 'dark' ? <Sun className="w-4 h-4 text-text-secondary" /> : <Moon className="w-4 h-4 text-text-secondary" />}
@@ -421,6 +580,17 @@ function Header({ title, theme, onThemeToggle, timeAgo, onMobileMenuOpen, connec
         <Button variant="ghost" size="icon" className="hover:bg-surface-card-alt">
           <RefreshCw className="w-4 h-4 text-text-secondary" />
         </Button>
+        {onLogout && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onLogout}
+            className="hover:bg-surface-card-alt hover:text-status-error"
+            title="Sair"
+          >
+            <LogOut className="w-4 h-4 text-text-secondary" />
+          </Button>
+        )}
       </div>
     </header>
   );

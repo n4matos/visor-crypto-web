@@ -1,5 +1,5 @@
 export type Period = '24h' | '7d' | '30d' | '90d' | '1y' | 'all';
-export type View = 'dashboard' | 'curvas' | 'funding' | 'taxas' | 'historico' | 'posicoes' | 'configuracoes' | 'auth';
+export type View = 'dashboard' | 'curvas' | 'funding' | 'taxas' | 'historico' | 'posicoes' | 'configuracoes' | 'auth' | 'landing' | 'onboarding';
 
 export interface EquityDataPoint {
   date: string;

@@ -13,6 +13,7 @@ import {
   AlertCircle,
   CheckCircle2,
   ArrowRight,
+  ArrowLeft,
 } from 'lucide-react';
 
 type AuthMode = 'login' | 'signup';
@@ -23,6 +24,7 @@ interface AuthViewProps {
   isLoading: boolean;
   error: string | null;
   onClearError: () => void;
+  onBack?: () => void;
 }
 
 interface FormData {
@@ -43,6 +45,7 @@ export function AuthView({
   isLoading,
   error,
   onClearError,
+  onBack,
 }: AuthViewProps) {
   const [mode, setMode] = useState<AuthMode>('login');
   const [showPassword, setShowPassword] = useState(false);
@@ -148,7 +151,17 @@ export function AuthView({
   }, [isLogin]);
 
   return (
-    <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
+    <div className="min-h-screen bg-surface-page flex items-center justify-center p-4 relative">
+      {onBack && (
+        <Button
+          variant="ghost"
+          onClick={onBack}
+          className="absolute top-4 left-4 md:top-8 md:left-8 text-text-secondary hover:text-text-primary"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Voltar
+        </Button>
+      )}
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex items-center justify-center gap-3 mb-8">

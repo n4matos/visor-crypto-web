@@ -1,8 +1,8 @@
 import { useEffect, useMemo } from 'react';
-import { 
-  Wallet, 
-  TrendingUp, 
-  Receipt, 
+import {
+  Wallet,
+  TrendingUp,
+  Receipt,
   DollarSign,
   Activity,
   ArrowUpRight,
@@ -28,20 +28,26 @@ import {
 
 const RECENT_EQUITY_DAYS = 30;
 
-export function DashboardView() {
+interface DashboardViewProps {
+  connected: boolean;
+}
+
+export function DashboardView({ connected }: DashboardViewProps) {
   const { summary, equityCurve, isLoading: dashboardLoading, error: dashboardError, fetchDashboardData } = useDashboard();
   const { positions, isLoading: positionsLoading, error: positionsError, fetchPositions } = usePositions();
   const { transactions, isLoading: transactionsLoading, error: transactionsError, fetchTransactions } = useTransactions();
 
   // Fetch all data on component mount
   useEffect(() => {
-    fetchDashboardData('all');
-    fetchPositions();
-    fetchTransactions({ limit: 5 });
-  }, [fetchDashboardData, fetchPositions, fetchTransactions]);
+    if (connected) {
+      fetchDashboardData('all');
+      fetchPositions();
+      fetchTransactions({ limit: 5 });
+    }
+  }, [fetchDashboardData, fetchPositions, fetchTransactions, connected]);
 
-  const isLoading = dashboardLoading || positionsLoading || transactionsLoading;
-  const error = dashboardError || positionsError || transactionsError;
+  const isLoading = connected && (dashboardLoading || positionsLoading || transactionsLoading);
+  const error = connected && (dashboardError || positionsError || transactionsError);
 
   // Get recent equity data (last 30 days)
   const recentEquityData = useMemo(() => {
@@ -79,15 +85,17 @@ export function DashboardView() {
       <div className="flex flex-col items-center justify-center h-96 space-y-4">
         <div className="flex items-center gap-2 text-status-error">
           <AlertCircle className="w-6 h-6" />
-          <span>{error}</span>
+          <span>{typeof error === 'string' ? error : 'Erro ao carregar dados'}</span>
         </div>
-        <Button 
+        <Button
           onClick={() => {
-            fetchDashboardData('all');
-            fetchPositions();
-            fetchTransactions({ limit: 5 });
-          }} 
-          variant="outline" 
+            if (connected) {
+              fetchDashboardData('all');
+              fetchPositions();
+              fetchTransactions({ limit: 5 });
+            }
+          }}
+          variant="outline"
           className="border-border-default"
         >
           Tentar novamente
@@ -96,11 +104,23 @@ export function DashboardView() {
     );
   }
 
-  const hasData = summary && summary.totalPositions > 0;
+  const hasData = connected && summary && summary.totalPositions > 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {!hasData ? (
+      {!connected ? (
+        <Card className="p-8 border border-border-default bg-surface-card text-center">
+          <div className="flex flex-col items-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-surface-card-alt flex items-center justify-center">
+              <Wallet className="w-8 h-8 text-text-muted" />
+            </div>
+            <h3 className="text-lg font-semibold text-text-primary">Conecte sua conta</h3>
+            <p className="text-text-secondary max-w-md">
+              Para visualizar seus dados, você precisa configurar suas credenciais da Bybit.
+            </p>
+          </div>
+        </Card>
+      ) : !hasData ? (
         <Card className="p-8 border border-border-default bg-surface-card text-center">
           <div className="flex flex-col items-center space-y-4">
             <div className="w-16 h-16 rounded-full bg-surface-card-alt flex items-center justify-center">
@@ -108,7 +128,7 @@ export function DashboardView() {
             </div>
             <h3 className="text-lg font-semibold text-text-primary">Bem-vindo ao Visor Crypto</h3>
             <p className="text-text-secondary max-w-md">
-              Para começar a visualizar seus dados, configure suas credenciais da Bybit em Configurações 
+              Para começar a visualizar seus dados, configure suas credenciais da Bybit em Configurações
               e sincronize seus dados.
             </p>
           </div>
@@ -116,33 +136,33 @@ export function DashboardView() {
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <MetricCard 
-              title="Saldo Total" 
-              value={`$${summary?.currentEquityUSD.toLocaleString() || '0'}`} 
-              subtitle={`₿${summary?.currentEquityBTC.toFixed(6) || '0'}`} 
-              change={{ value: summary?.todayPnL || 0, percent: (summary?.totalReturnUSD || 0) }} 
-              icon={<Wallet className="w-5 h-5" />} 
+            <MetricCard
+              title="Saldo Total"
+              value={`$${summary?.currentEquityUSD.toLocaleString() || '0'}`}
+              subtitle={`₿${summary?.currentEquityBTC.toFixed(6) || '0'}`}
+              change={{ value: summary?.todayPnL || 0, percent: (summary?.totalReturnUSD || 0) }}
+              icon={<Wallet className="w-5 h-5" />}
             />
-            <MetricCard 
-              title="PnL Hoje" 
-              value={`$${(summary?.todayPnL || 0).toFixed(2)}`} 
-              change={{ value: summary?.todayPnL || 0, percent: summary?.currentEquityUSD ? ((summary?.todayPnL || 0) / summary?.currentEquityUSD) * 100 : 0 }} 
-              icon={<TrendingUp className="w-5 h-5" />} 
-              variant={(summary?.todayPnL || 0) >= 0 ? 'success' : 'error'} 
+            <MetricCard
+              title="PnL Hoje"
+              value={`$${(summary?.todayPnL || 0).toFixed(2)}`}
+              change={{ value: summary?.todayPnL || 0, percent: summary?.currentEquityUSD ? ((summary?.todayPnL || 0) / summary?.currentEquityUSD) * 100 : 0 }}
+              icon={<TrendingUp className="w-5 h-5" />}
+              variant={(summary?.todayPnL || 0) >= 0 ? 'success' : 'error'}
             />
-            <MetricCard 
-              title="PnL Semana" 
-              value={`$${(summary?.weekPnL || 0).toFixed(2)}`} 
-              change={{ value: summary?.weekPnL || 0, percent: summary?.currentEquityUSD ? ((summary?.weekPnL || 0) / summary?.currentEquityUSD) * 100 : 0 }} 
-              icon={<Receipt className="w-5 h-5" />} 
-              variant={(summary?.weekPnL || 0) >= 0 ? 'success' : 'error'} 
+            <MetricCard
+              title="PnL Semana"
+              value={`$${(summary?.weekPnL || 0).toFixed(2)}`}
+              change={{ value: summary?.weekPnL || 0, percent: summary?.currentEquityUSD ? ((summary?.weekPnL || 0) / summary?.currentEquityUSD) * 100 : 0 }}
+              icon={<Receipt className="w-5 h-5" />}
+              variant={(summary?.weekPnL || 0) >= 0 ? 'success' : 'error'}
             />
-            <MetricCard 
-              title="PnL Mês" 
-              value={`$${(summary?.monthPnL || 0).toFixed(2)}`} 
-              change={{ value: summary?.monthPnL || 0, percent: summary?.currentEquityUSD ? ((summary?.monthPnL || 0) / summary?.currentEquityUSD) * 100 : 0 }} 
-              icon={<DollarSign className="w-5 h-5" />} 
-              variant={(summary?.monthPnL || 0) >= 0 ? 'success' : 'error'} 
+            <MetricCard
+              title="PnL Mês"
+              value={`$${(summary?.monthPnL || 0).toFixed(2)}`}
+              change={{ value: summary?.monthPnL || 0, percent: summary?.currentEquityUSD ? ((summary?.monthPnL || 0) / summary?.currentEquityUSD) * 100 : 0 }}
+              icon={<DollarSign className="w-5 h-5" />}
+              variant={(summary?.monthPnL || 0) >= 0 ? 'success' : 'error'}
             />
           </div>
 
@@ -163,18 +183,18 @@ export function DashboardView() {
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={recentEquityData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
-                    <XAxis 
-                      dataKey="date" 
-                      tick={{ fill: 'var(--chart-axis-label)', fontSize: 12 }} 
-                      tickLine={false} 
-                      axisLine={{ stroke: 'var(--chart-grid)' }} 
-                      tickFormatter={(v) => { const d = new Date(v); return `${d.getDate()}/${d.getMonth() + 1}`; }} 
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: 'var(--chart-axis-label)', fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={{ stroke: 'var(--chart-grid)' }}
+                      tickFormatter={(v) => { const d = new Date(v); return `${d.getDate()}/${d.getMonth() + 1}`; }}
                     />
-                    <YAxis 
-                      tick={{ fill: 'var(--chart-axis-label)', fontSize: 12 }} 
-                      tickLine={false} 
-                      axisLine={false} 
-                      tickFormatter={(v) => `$${v.toLocaleString()}`} 
+                    <YAxis
+                      tick={{ fill: 'var(--chart-axis-label)', fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v) => `$${v.toLocaleString()}`}
                     />
                     <Tooltip content={({ active, payload, label }) => active && payload?.length ? (
                       <div className="bg-surface-card border border-border-default rounded-lg p-3 shadow-lg">
@@ -196,14 +216,14 @@ export function DashboardView() {
             <Card className="p-5 border border-border-default bg-surface-card">
               <h2 className="text-lg font-semibold text-text-primary mb-4">Resumo Rápido</h2>
               <div className="space-y-4">
-                <SummaryItem 
+                <SummaryItem
                   icon={<Activity className="w-5 h-5 text-action-primary" />}
                   bgColor="bg-action-primary-muted"
                   label="Posições Abertas"
                   value={summary?.openPositions?.toString() || '0'}
                   isMono
                 />
-                <SummaryItem 
+                <SummaryItem
                   icon={<ArrowUpRight className={cn("w-5 h-5", change7dPercent >= 0 ? "text-status-success" : "text-status-error")} />}
                   bgColor={change7dPercent >= 0 ? "bg-status-success-muted" : "bg-status-error-muted"}
                   label="Variação 7D"
@@ -211,14 +231,14 @@ export function DashboardView() {
                   valueColor={change7dPercent >= 0 ? "text-status-success" : "text-status-error"}
                   isMono
                 />
-                <SummaryItem 
+                <SummaryItem
                   icon={<TrendingUp className="w-5 h-5 text-status-success" />}
                   bgColor="bg-status-success-muted"
                   label="Total de Trades"
                   value={summary?.totalPositions?.toString() || '0'}
                   isMono
                 />
-                <SummaryItem 
+                <SummaryItem
                   icon={<DollarSign className="w-5 h-5 text-action-primary" />}
                   bgColor="bg-action-primary-muted"
                   label="Retorno Total"
@@ -235,8 +255,8 @@ export function DashboardView() {
               <h2 className="text-lg font-semibold text-text-primary mb-4">Posições Abertas</h2>
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
                 {positions.map((position) => (
-                  <PositionCard 
-                    key={position.id} 
+                  <PositionCard
+                    key={position.id}
                     position={{
                       id: position.id,
                       asset: position.symbol.replace('USDT', ''),
@@ -251,7 +271,7 @@ export function DashboardView() {
                       liquidationPrice: parseFloat(position.liquidation_price),
                       fundingRate: parseFloat(position.funding_rate) || 0,
                       fundingInterval: position.funding_interval,
-                    }} 
+                    }}
                   />
                 ))}
               </div>
@@ -286,7 +306,7 @@ export function DashboardView() {
                           </Badge>
                         </td>
                         <td className="py-3 px-4">
-                          <Badge variant={tx.side === 'Buy' ? 'default' : 'destructive'} 
+                          <Badge variant={tx.side === 'Buy' ? 'default' : 'destructive'}
                             className={cn("text-xs", tx.side === 'Buy' ? "bg-status-success/20 text-status-success border-status-success/30" : "bg-status-error/20 text-status-error border-status-error/30")}>
                             {tx.side === 'Buy' ? 'Compra' : 'Venda'}
                           </Badge>
