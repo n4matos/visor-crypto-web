@@ -88,8 +88,16 @@ visor-crypto-web/
 ## 📡 Integração com API (IMPORTANTE)
 
 ### Base URL
+A URL da API é configurada via variável de ambiente:
+
+```bash
+# .env
+VITE_API_BASE_URL=http://localhost:8080/api/v1
+```
+
+Ou no código:
 ```typescript
-const API_BASE_URL = 'http://localhost:8080/api/v1'  // Desenvolvimento
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
 ```
 
 ### Fluxo de Autenticação (2 Etapas)
@@ -127,14 +135,14 @@ const login = async (email: string, password: string) => {
 **ETAPA 3 - Configurar Bybit (após login):**
 ```typescript
 // PUT /users/bybit-credentials
-const updateBybitCredentials = async (apiKey: string, secret: string, testnet = true) => {
+const updateBybitCredentials = async (apiKey: string, secret: string) => {
   const response = await fetch(`${API_BASE_URL}/users/bybit-credentials`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${jwtToken}`  // Token do login!
     },
-    body: JSON.stringify({ api_key: apiKey, secret, testnet })
+    body: JSON.stringify({ api_key: apiKey, secret })
   });
   return response.json();
 };
@@ -162,6 +170,9 @@ headers: {
 | Taxas | GET | `/fees/summary` | Resumo de taxas |
 | Histórico | GET | `/transactions?limit=50` | Lista paginada |
 | Config | PUT | `/users/bybit-credentials` | Salvar API keys |
+| Config | GET | `/users/bybit-credentials` | Buscar credenciais (masked) |
+| Config | DELETE | `/users/bybit-credentials` | Remover credenciais |
+| Config | POST | `/users/test-bybit-connection` | Testar conexão Bybit |
 | Config | GET | `/users/me` | Dados do usuário |
 | Config | POST | `/sync` | Iniciar sincronização |
 | Config | GET | `/sync/status` | Status da sincronização |
@@ -353,40 +364,62 @@ Se receber 401 Unauthorized:
 
 ---
 
-## 📝 TODOs de Integração
+## 📝 Status das Integrações
 
-Views que precisam ser conectadas à API:
+### ✅ Integrações Concluídas
 
-- [ ] **DashboardView.tsx**
-  - [ ] Buscar `/dashboard/summary`
-  - [ ] Buscar `/positions`
-  - [ ] Buscar `/transactions` (últimas 5)
+- [x] **DashboardView.tsx**
+  - [x] Buscar `/dashboard/summary`
+  - [x] Buscar `/positions` (posições abertas)
+  - [x] Buscar `/transactions` (últimas 5)
   
-- [ ] **PosicoesView.tsx**
-  - [ ] Buscar `/positions` (todas)
+- [x] **PosicoesView.tsx**
+  - [x] Buscar `/positions` (todas)
+  - [x] Buscar `/positions/summary`
+  - [x] Auto-refresh a cada 30 segundos
   
-- [ ] **CurvasView.tsx**
-  - [ ] Buscar `/dashboard/equity-curve`
+- [x] **CurvasView.tsx**
+  - [x] Buscar `/dashboard/equity-curve` (com filtro de período)
+  - [x] Buscar `/dashboard/performance` (métricas calculadas)
+  - [x] Gráfico Equity Curve (USD vs BTC)
+  - [x] Gráfico PnL Acumulado
   
-- [ ] **FundingView.tsx**
-  - [ ] Buscar `/funding/summary`
+- [x] **FundingView.tsx**
+  - [x] Buscar `/funding/summary`
+  - [x] Breakdown por ativo
   
-- [ ] **TaxasView.tsx**
-  - [ ] Buscar `/fees/summary`
+- [x] **TaxasView.tsx**
+  - [x] Buscar `/fees/summary`
+  - [x] Breakdown Maker vs Taker
   
-- [ ] **HistoricoView.tsx**
-  - [ ] Buscar `/transactions` com paginação
+- [x] **HistoricoView.tsx**
+  - [x] Buscar `/transactions` (com paginação)
+  - [x] Buscar `/transactions/summary`
+  - [x] Filtros por tipo e lado
   
-- [ ] **ConfiguracoesView.tsx**
-  - [ ] Form para `/users/bybit-credentials`
-  - [ ] Mostrar `/users/me`
-  - [ ] Botão para `/sync`
-  - [ ] Mostrar `/sync/status`
+- [x] **ConfiguracoesView.tsx**
+  - [x] Form para `/users/bybit-credentials`
+  - [x] Mostrar `/users/me`
+  - [x] Botão para `/sync`
+  - [x] Mostrar `/sync/status`
+  - [x] Testar conexão com Bybit
+  - [x] Remover credenciais
 
-- [ ] **App.tsx**
-  - [ ] Verificar autenticação no startup
-  - [ ] Adicionar rotas de login/register
-  - [ ] Proteger rotas autenticadas
+- [x] **App.tsx**
+  - [x] Verificar autenticação no startup
+  - [x] Adicionar rotas de login/register (AuthView)
+  - [x] Proteger rotas autenticadas
+
+### 📁 Hooks Criados
+
+| Hook | Descrição |
+|------|-----------|
+| `useAuth.ts` | Autenticação (login, register, logout) |
+| `useDashboard.ts` | Dashboard (summary, equity-curve, performance) |
+| `usePositions.ts` | Posições abertas |
+| `useTransactions.ts` | Histórico de transações |
+| `useFunding.ts` | Funding rates |
+| `useFees.ts` | Taxas de trading |
 
 ---
 
@@ -400,5 +433,6 @@ Views que precisam ser conectadas à API:
 
 ---
 
-**Última atualização:** 2026-02-01
+**Última atualização:** 2026-02-01  
+**Status:** Todas as integrações concluídas ✅  
 **Responsável:** @n4matos
