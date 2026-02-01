@@ -156,7 +156,7 @@ export function AuthView({
             <TrendingUp className="w-7 h-7 text-white" />
           </div>
           <span className="text-2xl font-bold text-text-primary tracking-tight">
-            CryptoMetrics
+            Visor Crypto
           </span>
         </div>
 

@@ -106,7 +106,7 @@ export function DashboardView() {
             <div className="w-16 h-16 rounded-full bg-surface-card-alt flex items-center justify-center">
               <Wallet className="w-8 h-8 text-text-muted" />
             </div>
-            <h3 className="text-lg font-semibold text-text-primary">Bem-vindo ao CryptoMetrics</h3>
+            <h3 className="text-lg font-semibold text-text-primary">Bem-vindo ao Visor Crypto</h3>
             <p className="text-text-secondary max-w-md">
               Para começar a visualizar seus dados, configure suas credenciais da Bybit em Configurações 
               e sincronize seus dados.

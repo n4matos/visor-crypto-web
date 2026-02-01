@@ -35,6 +35,9 @@ import {
   RefreshCw,
 } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
+const TOKEN_KEY = 'visor_jwt';
+
 const PAGE_TITLES: Record<View, string> = {
   dashboard: 'Dashboard',
   curvas: 'Curvas de Crescimento',
@@ -61,20 +64,81 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'posicoes', label: 'Posições', icon: Wallet },
 ];
 
+interface ConnectionStatus {
+  connected: boolean;
+  exchange: string;
+  lastSync: string | null;
+  apiKey: string | null;
+}
+
 export default function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
+    connected: false,
+    exchange: 'Bybit',
+    lastSync: null,
+    apiKey: null,
+  });
   const { theme, toggleTheme } = useTheme();
   const { isAuthenticated, isLoading: authLoading, login, register, logout, error, clearError } = useAuth();
 
-  // TODO: Substituir por dados da API
-  const connectionStatus = {
-    connected: false,
-    exchange: 'Bybit',
-    lastSync: new Date().toISOString(),
-    apiKey: '****1234',
-  };
+  // Fetch connection status from API
+  useEffect(() => {
+    const fetchConnectionStatus = async () => {
+      const token = localStorage.getItem(TOKEN_KEY);
+      if (!token) return;
+
+      try {
+        // Fetch user data to check if has credentials
+        const userResponse = await fetch(`${API_BASE_URL}/users/me`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          
+          // Check multiple possible field names from backend
+          const hasCredentials = userData.data?.has_bybit_credentials || 
+                                userData.data?.bybit_configured || 
+                                userData.data?.has_credentials;
+          const lastSync = userData.data?.last_sync_at;
+
+          // Consider connected if has credentials (same logic as ConfiguracoesView)
+          const isConnected = !!(hasCredentials || lastSync);
+
+          // Fetch credentials to get masked API key
+          let apiKey = null;
+          if (hasCredentials) {
+            const credResponse = await fetch(`${API_BASE_URL}/users/bybit-credentials`, {
+              headers: { 'Authorization': `Bearer ${token}` },
+            });
+            if (credResponse.ok) {
+              const credData = await credResponse.json();
+              apiKey = credData.data?.api_key;
+            }
+          }
+
+          setConnectionStatus({
+            connected: isConnected,
+            exchange: 'Bybit',
+            lastSync: lastSync,
+            apiKey: apiKey,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch connection status:', err);
+      }
+    };
+
+    // Fetch immediately and whenever auth state changes
+    fetchConnectionStatus();
+    
+    // Poll every 30 seconds
+    const interval = setInterval(fetchConnectionStatus, 30000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
 
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   
@@ -84,6 +148,7 @@ export default function App() {
   }, []);
   
   const timeAgo = useMemo(() => {
+    if (!connectionStatus.lastSync) return null;
     const lastSync = new Date(connectionStatus.lastSync);
     return Math.floor((currentTime - lastSync.getTime()) / 60000);
   }, [currentTime, connectionStatus.lastSync]);
@@ -205,7 +270,7 @@ function MobileHeader({ onMenuToggle, isOpen }: MobileHeaderProps) {
         <div className="w-8 h-8 rounded-lg bg-action-primary flex items-center justify-center">
           <TrendingUp className="w-5 h-5 text-white" />
         </div>
-        <span className="font-semibold text-text-primary">CryptoMetrics</span>
+        <span className="font-semibold text-text-primary">Visor Crypto</span>
       </div>
       <Button variant="ghost" size="icon" onClick={onMenuToggle}>
         {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -237,7 +302,7 @@ function Sidebar({ currentView, onNavClick, collapsed, onCollapseToggle, mobileO
           <div className="w-8 h-8 rounded-lg bg-action-primary flex items-center justify-center flex-shrink-0">
             <TrendingUp className="w-5 h-5 text-white" />
           </div>
-          {!collapsed && <span className="font-semibold text-text-primary whitespace-nowrap">CryptoMetrics</span>}
+          {!collapsed && <span className="font-semibold text-text-primary whitespace-nowrap">Visor Crypto</span>}
         </div>
         <Button variant="ghost" size="icon" onClick={onCollapseToggle} className="hidden lg:flex h-8 w-8">
           {collapsed ? <ChevronRight className="w-4 h-4 text-text-muted" /> : <ChevronLeft className="w-4 h-4 text-text-muted" />}
@@ -327,7 +392,7 @@ interface HeaderProps {
   title: string;
   theme: 'dark' | 'light';
   onThemeToggle: () => void;
-  timeAgo: number;
+  timeAgo: number | null;
   onMobileMenuOpen: () => void;
   connected: boolean;
   exchange: string;
@@ -363,7 +428,7 @@ function Header({ title, theme, onThemeToggle, timeAgo, onMobileMenuOpen, connec
 
 // Connection Status Component
 interface ConnectionStatusProps {
-  timeAgo: number;
+  timeAgo: number | null;
   connected: boolean;
   exchange: string;
 }
@@ -376,7 +441,8 @@ function ConnectionStatus({ timeAgo, connected, exchange }: ConnectionStatusProp
           <CheckCircle2 className="w-4 h-4 text-status-success" />
           <span className="text-sm text-text-secondary">{exchange}</span>
           <span className="text-xs text-text-muted flex items-center gap-1">
-            <Clock className="w-3 h-3" />{timeAgo < 1 ? 'agora' : `${timeAgo}m`}
+            <Clock className="w-3 h-3" />
+            {timeAgo === null ? 'nunca' : timeAgo < 1 ? 'agora' : `${timeAgo}m`}
           </span>
         </>
       ) : (
