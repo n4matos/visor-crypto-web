@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { View } from '@/types';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/useTheme';
+import { useAuth } from '@/hooks/useAuth';
 import { 
   DashboardView,
   CurvasView,
@@ -10,6 +11,7 @@ import {
   HistoricoView,
   PosicoesView,
   ConfiguracoesView,
+  AuthView,
 } from '@/views';
 import { cn } from '@/lib/utils';
 import { 
@@ -41,6 +43,7 @@ const PAGE_TITLES: Record<View, string> = {
   historico: 'Histórico de Trades',
   posicoes: 'Posições Abertas',
   configuracoes: 'Configurações',
+  auth: 'Autenticação',
 };
 
 interface NavItem {
@@ -63,6 +66,7 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
+  const { isAuthenticated, isLoading: authLoading, login, register, logout, error, clearError } = useAuth();
 
   // TODO: Substituir por dados da API
   const connectionStatus = {
@@ -72,10 +76,30 @@ export default function App() {
     apiKey: '****1234',
   };
 
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
+  
+  useEffect(() => {
+    const interval = setInterval(() => setCurrentTime(Date.now()), 60000);
+    return () => clearInterval(interval);
+  }, []);
+  
   const timeAgo = useMemo(() => {
     const lastSync = new Date(connectionStatus.lastSync);
-    return Math.floor((Date.now() - lastSync.getTime()) / 60000);
-  }, []);
+    return Math.floor((currentTime - lastSync.getTime()) / 60000);
+  }, [currentTime, connectionStatus.lastSync]);
+
+  const handleLogin = useCallback(async (email: string, password: string): Promise<boolean> => {
+    return await login({ email, password });
+  }, [login]);
+
+  const handleRegister = useCallback(async (email: string, password: string): Promise<boolean> => {
+    return await register({ email, password });
+  }, [register]);
+
+  const handleLogout = useCallback(() => {
+    logout();
+    setCurrentView('dashboard');
+  }, [logout]);
 
   const renderView = () => {
     switch (currentView) {
@@ -94,6 +118,31 @@ export default function App() {
     setCurrentView(view);
     setMobileMenuOpen(false);
   };
+
+  // Show loading state while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-surface-page flex items-center justify-center">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 border-2 border-action-primary border-t-transparent rounded-full animate-spin" />
+          <span className="text-text-secondary">Carregando...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Show Auth view if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <AuthView
+        onLogin={handleLogin}
+        onRegister={handleRegister}
+        isLoading={authLoading}
+        error={error}
+        onClearError={clearError}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-surface-page">
@@ -115,6 +164,7 @@ export default function App() {
         collapsed={sidebarCollapsed}
         onCollapseToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         mobileOpen={mobileMenuOpen}
+        onLogout={handleLogout}
       />
 
       {/* Main Content */}
@@ -171,9 +221,10 @@ interface SidebarProps {
   collapsed: boolean;
   onCollapseToggle: () => void;
   mobileOpen: boolean;
+  onLogout: () => void;
 }
 
-function Sidebar({ currentView, onNavClick, collapsed, onCollapseToggle, mobileOpen }: SidebarProps) {
+function Sidebar({ currentView, onNavClick, collapsed, onCollapseToggle, mobileOpen, onLogout }: SidebarProps) {
   return (
     <aside className={cn(
       "fixed left-0 top-0 h-screen bg-surface-sidebar border-r border-border-default z-50 transition-all duration-300 ease-out",
@@ -231,7 +282,7 @@ function Sidebar({ currentView, onNavClick, collapsed, onCollapseToggle, mobileO
           label="Sair"
           isActive={false}
           collapsed={collapsed}
-          onClick={() => {}}
+          onClick={onLogout}
         />
       </div>
     </aside>

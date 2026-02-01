@@ -196,12 +196,18 @@
   .text-text-secondary { color: var(--text-secondary); }
   .text-text-muted { color: var(--text-muted); }
   .text-text-disabled { color: var(--text-disabled); }
+  .text-text-link { color: var(--text-link); }
+  .hover\:text-text-secondary:hover { color: var(--text-secondary); }
   
   /* Action utilities */
   .bg-action-primary { background-color: var(--action-primary); }
   .bg-action-primary-hover:hover { background-color: var(--action-primary-hover); }
+  .hover\:bg-action-primary-hover:hover { background-color: var(--action-primary-hover); }
+  .hover\:text-action-primary-hover:hover { color: var(--action-primary-hover); }
   .bg-action-secondary { background-color: var(--action-secondary); }
   .bg-action-primary-muted { background-color: var(--action-primary-muted); }
+  .text-action-primary { color: var(--action-primary); }
+  .hover\:text-action-primary:hover { color: var(--action-primary); }
   
   /* Accent utilities */
   .text-accent-yellow { color: var(--accent-yellow); }
@@ -218,6 +224,9 @@
   .border-border-default { border-color: var(--border-default); }
   .border-border-subtle { border-color: var(--border-subtle); }
   .border-border-strong { border-color: var(--border-strong); }
+  .border-border-focus { border-color: var(--border-focus); }
+  .focus\:border-border-focus:focus { border-color: var(--border-focus); }
+  .focus\:ring-border-focus:focus { --tw-ring-color: var(--border-focus); }
   
   /* Status utilities */
   .text-status-success { color: var(--status-success); }

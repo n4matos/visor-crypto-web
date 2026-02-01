@@ -1,32 +1,66 @@
-import { useMemo } from 'react';
-import { Wallet, TrendingUp, TrendingDown, Clock } from 'lucide-react';
+import { useEffect, useMemo } from 'react';
+import { Wallet, TrendingUp, TrendingDown, Clock, Loader2, AlertCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { PositionCard } from '@/components/cards';
-import type { Position } from '@/types';
-
-// TODO: Substituir por chamada à API
-const openPositions: Position[] = [];
-
-interface PositionStats {
-  totalPnl: number;
-  totalMargin: number;
-  longCount: number;
-  shortCount: number;
-  totalFunding: number;
-}
+import { usePositions } from '@/hooks';
 
 export function PosicoesView() {
-  const stats = useMemo<PositionStats>(() => {
-    return openPositions.reduce((acc, pos) => ({
-      totalPnl: acc.totalPnl + pos.pnl,
-      totalMargin: acc.totalMargin + pos.margin,
-      longCount: acc.longCount + (pos.direction === 'LONG' ? 1 : 0),
-      shortCount: acc.shortCount + (pos.direction === 'SHORT' ? 1 : 0),
-      totalFunding: acc.totalFunding + pos.fundingRate,
-    }), { totalPnl: 0, totalMargin: 0, longCount: 0, shortCount: 0, totalFunding: 0 });
-  }, []);
+  const { positions, summary, isLoading, error, fetchPositions } = usePositions();
+
+  // Fetch positions on component mount
+  useEffect(() => {
+    fetchPositions();
+  }, [fetchPositions]);
+
+  // Auto-refresh every 30 seconds (positions change frequently)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchPositions();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [fetchPositions]);
+
+  const stats = useMemo(() => {
+    const totalPnl = positions.reduce((acc, pos) => acc + parseFloat(pos.unrealized_pnl), 0);
+    const totalMargin = summary?.total_margin || positions.reduce((acc, pos) => acc + parseFloat(pos.margin), 0);
+    const longCount = summary?.long_count || positions.filter(p => p.side === 'LONG').length;
+    const shortCount = summary?.short_count || positions.filter(p => p.side === 'SHORT').length;
+    const totalFunding = positions.reduce((acc, pos) => acc + parseFloat(pos.funding_rate || '0'), 0);
+
+    return {
+      totalPnl,
+      totalMargin,
+      longCount,
+      shortCount,
+      totalFunding,
+    };
+  }, [positions, summary]);
+
+  if (isLoading && positions.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 space-y-4">
+        <Loader2 className="w-8 h-8 animate-spin text-action-primary" />
+        <p className="text-text-secondary">Carregando posições...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 space-y-4">
+        <div className="flex items-center gap-2 text-status-error">
+          <AlertCircle className="w-6 h-6" />
+          <span>{error}</span>
+        </div>
+        <Button onClick={fetchPositions} variant="outline" className="border-border-default">
+          Tentar novamente
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -86,10 +120,48 @@ export function PosicoesView() {
       </Card>
 
       <div>
-        <h2 className="text-lg font-semibold text-text-primary mb-4">Detalhes das Posições</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-          {openPositions.map((position) => <PositionCard key={position.id} position={position} />)}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-text-primary">Detalhes das Posições</h2>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={fetchPositions}
+            disabled={isLoading}
+            className="text-text-secondary hover:text-text-primary"
+          >
+            <Loader2 className={cn("w-4 h-4 mr-2", isLoading && "animate-spin")} />
+            Atualizar
+          </Button>
         </div>
+        
+        {positions.length === 0 ? (
+          <Card className="p-8 border border-border-default bg-surface-card text-center">
+            <p className="text-text-secondary">Nenhuma posição aberta no momento.</p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+            {positions.map((position) => (
+              <PositionCard 
+                key={position.id} 
+                position={{
+                  id: position.id,
+                  asset: position.symbol.replace('USDT', ''),
+                  direction: position.side,
+                  leverage: parseInt(position.leverage),
+                  size: parseFloat(position.size),
+                  entryPrice: parseFloat(position.entry_price),
+                  markPrice: parseFloat(position.mark_price),
+                  pnl: parseFloat(position.unrealized_pnl),
+                  pnlPercent: parseFloat(position.unrealized_pnl_pct),
+                  margin: parseFloat(position.margin),
+                  liquidationPrice: parseFloat(position.liquidation_price),
+                  fundingRate: parseFloat(position.funding_rate) || 0,
+                  fundingInterval: position.funding_interval,
+                }} 
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

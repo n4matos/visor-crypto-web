@@ -1,45 +1,86 @@
-import { useState, useMemo } from 'react';
-import { Search, Download } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Search, Download, Loader2, AlertCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import type { Trade } from '@/types';
+import { useTransactions } from '@/hooks';
 
-// TODO: Substituir por chamada à API
-const tradeHistory: Trade[] = [];
+type DirectionFilter = 'ALL' | 'Buy' | 'Sell';
+type TypeFilter = 'ALL' | 'TRADE' | 'SETTLEMENT' | 'FEE' | 'TRANSFER';
 
-type DirectionFilter = 'ALL' | 'LONG' | 'SHORT';
-type ResultFilter = 'ALL' | 'WIN' | 'LOSS';
-
-const MAX_TRADES_DISPLAY = 20;
+const MAX_TRADES_DISPLAY = 50;
 
 export function HistoricoView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [directionFilter, setDirectionFilter] = useState<DirectionFilter>('ALL');
-  const [resultFilter, setResultFilter] = useState<ResultFilter>('ALL');
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('ALL');
+  
+  const { transactions, summary, isLoading, error, fetchTransactions, fetchSummary } = useTransactions();
 
-  const { filteredTrades, winCount, totalPnl, totalFees } = useMemo(() => {
-    const filtered = tradeHistory.filter(trade => {
-      if (searchQuery && !trade.pair.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-      if (directionFilter !== 'ALL' && trade.direction !== directionFilter) return false;
-      if (resultFilter !== 'ALL') { 
-        if (resultFilter === 'WIN' && trade.pnl < 0) return false; 
-        if (resultFilter === 'LOSS' && trade.pnl >= 0) return false; 
-      }
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchTransactions({ limit: 100 });
+    fetchSummary('all');
+  }, [fetchTransactions, fetchSummary]);
+
+
+
+  const { filteredTrades, winCount, totalPnL, totalFees } = useMemo(() => {
+    const filtered = transactions.filter(trade => {
+      if (searchQuery && !trade.symbol.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      if (directionFilter !== 'ALL' && trade.side !== directionFilter) return false;
+      if (typeFilter !== 'ALL' && trade.type !== typeFilter) return false;
       return true;
     });
 
+    // Calculate total fees from filtered trades
+    const fees = filtered.reduce((sum, t) => sum + parseFloat(t.fee), 0);
+    
+    // Use summary data for PnL if available
+    const pnl = summary ? parseFloat(summary.total_pnl) : 0;
+
     return {
       filteredTrades: filtered,
-      winCount: filtered.filter(t => t.pnl >= 0).length,
-      totalPnl: filtered.reduce((sum, t) => sum + t.pnl, 0),
-      totalFees: filtered.reduce((sum, t) => sum + t.fees, 0),
+      winCount: summary?.win_count || 0,
+      totalPnL: pnl,
+      totalFees: fees,
     };
-  }, [searchQuery, directionFilter, resultFilter]);
+  }, [transactions, searchQuery, directionFilter, typeFilter, summary]);
 
-  const winRate = filteredTrades.length > 0 ? ((winCount / filteredTrades.length) * 100).toFixed(1) : '0';
+  const totalTrades = summary?.total_trades || filteredTrades.length;
+  const winRate = summary?.win_rate || (totalTrades > 0 ? (winCount / totalTrades) * 100 : 0);
+
+  if (isLoading && transactions.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 space-y-4">
+        <Loader2 className="w-8 h-8 animate-spin text-action-primary" />
+        <p className="text-text-secondary">Carregando histórico...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 space-y-4">
+        <div className="flex items-center gap-2 text-status-error">
+          <AlertCircle className="w-6 h-6" />
+          <span>{error}</span>
+        </div>
+        <Button 
+          onClick={() => {
+            fetchTransactions({ limit: 100 });
+            fetchSummary('all');
+          }} 
+          variant="outline" 
+          className="border-border-default"
+        >
+          Tentar novamente
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -56,16 +97,16 @@ export function HistoricoView() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-4 border border-border-default bg-surface-card">
           <span className="text-xs text-text-secondary uppercase">Total Trades</span>
-          <p className="text-2xl font-bold font-mono text-text-primary">{filteredTrades.length}</p>
+          <p className="text-2xl font-bold font-mono text-text-primary">{totalTrades}</p>
         </Card>
         <Card className="p-4 border border-border-default bg-surface-card">
           <span className="text-xs text-text-secondary uppercase">Win Rate</span>
-          <p className="text-2xl font-bold font-mono text-status-success">{winRate}%</p>
+          <p className="text-2xl font-bold font-mono text-status-success">{winRate.toFixed(1)}%</p>
         </Card>
         <Card className="p-4 border border-border-default bg-surface-card">
           <span className="text-xs text-text-secondary uppercase">PnL Total</span>
-          <p className={cn("text-2xl font-bold font-mono", totalPnl >= 0 ? "text-status-success" : "text-status-error")}>
-            {totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}
+          <p className={cn("text-2xl font-bold font-mono", totalPnL >= 0 ? "text-status-success" : "text-status-error")}>
+            {totalPnL >= 0 ? '+' : ''}${totalPnL.toFixed(2)}
           </p>
         </Card>
         <Card className="p-4 border border-border-default bg-surface-card">
@@ -86,17 +127,17 @@ export function HistoricoView() {
             />
           </div>
           <FilterButtons 
-            options={['ALL', 'LONG', 'SHORT'] as const}
+            options={['ALL', 'Buy', 'Sell'] as const}
             value={directionFilter}
             onChange={setDirectionFilter}
-            labels={{ ALL: 'Tudo', LONG: 'LONG', SHORT: 'SHORT' }}
+            labels={{ ALL: 'Tudo', Buy: 'COMPRA', Sell: 'VENDA' }}
           />
           <FilterButtons 
-            options={['ALL', 'WIN', 'LOSS'] as const}
-            value={resultFilter}
-            onChange={setResultFilter}
-            labels={{ ALL: 'Tudo', WIN: 'Ganhos', LOSS: 'Perdas' }}
-            variant="result"
+            options={['ALL', 'TRADE', 'SETTLEMENT', 'FEE', 'TRANSFER'] as const}
+            value={typeFilter}
+            onChange={setTypeFilter}
+            labels={{ ALL: 'Tudo', TRADE: 'TRADE', SETTLEMENT: 'SETTLE', FEE: 'TAXA', TRANSFER: 'TRANSFER' }}
+            variant="type"
           />
         </div>
       </Card>
@@ -108,35 +149,44 @@ export function HistoricoView() {
               <tr className="border-b border-border-default bg-surface-card-alt/50">
                 <th className="text-left py-3 px-4 text-xs font-medium text-text-secondary uppercase">Data</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-text-secondary uppercase">Par</th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-text-secondary uppercase">Direção</th>
-                <th className="text-right py-3 px-4 text-xs font-medium text-text-secondary uppercase">Tamanho</th>
-                <th className="text-right py-3 px-4 text-xs font-medium text-text-secondary uppercase">PnL</th>
-                <th className="text-right py-3 px-4 text-xs font-medium text-text-secondary uppercase">Taxas</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-text-secondary uppercase">Tipo</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-text-secondary uppercase">Lado</th>
+                <th className="text-right py-3 px-4 text-xs font-medium text-text-secondary uppercase">Quantidade</th>
+                <th className="text-right py-3 px-4 text-xs font-medium text-text-secondary uppercase">Preço</th>
+                <th className="text-right py-3 px-4 text-xs font-medium text-text-secondary uppercase">Taxa</th>
               </tr>
             </thead>
             <tbody>
               {filteredTrades.slice(0, MAX_TRADES_DISPLAY).map((trade) => (
                 <tr key={trade.id} className="border-b border-border-subtle hover:bg-surface-card-alt/50 transition-colors">
                   <td className="py-3 px-4 text-sm text-text-secondary">
-                    {new Date(trade.date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    {new Date(trade.executed_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                   </td>
-                  <td className="py-3 px-4 text-sm font-medium text-text-primary">{trade.pair}</td>
+                  <td className="py-3 px-4 text-sm font-medium text-text-primary">{trade.symbol}</td>
                   <td className="py-3 px-4">
-                    <Badge variant={trade.direction === 'LONG' ? 'default' : 'destructive'} 
-                      className={cn("text-xs", trade.direction === 'LONG' ? "bg-status-success/20 text-status-success border-status-success/30" : "")}>
-                      {trade.direction}
+                    <Badge variant="outline" className="text-xs border-border-default">
+                      {trade.type}
                     </Badge>
                   </td>
-                  <td className="py-3 px-4 text-sm font-mono text-text-primary text-right">{trade.size}</td>
-                  <td className={cn("py-3 px-4 text-sm font-mono font-medium text-right", trade.pnl >= 0 ? "text-status-success" : "text-status-error")}>
-                    {trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}
+                  <td className="py-3 px-4">
+                    <Badge variant={trade.side === 'Buy' ? 'default' : 'destructive'} 
+                      className={cn("text-xs", trade.side === 'Buy' ? "bg-status-success/20 text-status-success border-status-success/30" : "bg-status-error/20 text-status-error border-status-error/30")}>
+                      {trade.side === 'Buy' ? 'COMPRA' : 'VENDA'}
+                    </Badge>
                   </td>
-                  <td className="py-3 px-4 text-sm font-mono text-status-error text-right">${trade.fees.toFixed(2)}</td>
+                  <td className="py-3 px-4 text-sm font-mono text-text-primary text-right">{parseFloat(trade.qty).toFixed(6)}</td>
+                  <td className="py-3 px-4 text-sm font-mono text-text-primary text-right">${parseFloat(trade.price).toFixed(2)}</td>
+                  <td className="py-3 px-4 text-sm font-mono text-status-error text-right">${parseFloat(trade.fee).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        {filteredTrades.length === 0 && (
+          <div className="p-8 text-center text-text-secondary">
+            Nenhuma transação encontrada.
+          </div>
+        )}
       </Card>
     </div>
   );
@@ -147,10 +197,10 @@ interface FilterButtonsProps<T extends string> {
   value: T;
   onChange: (value: T) => void;
   labels: Record<T, string>;
-  variant?: 'default' | 'result';
+  variant?: 'default' | 'type';
 }
 
-function FilterButtons<T extends string>({ options, value, onChange, labels, variant = 'default' }: FilterButtonsProps<T>) {
+function FilterButtons<T extends string>({ options, value, onChange, labels }: FilterButtonsProps<T>) {
   return (
     <div className="flex gap-1">
       {options.map((option) => (
@@ -159,14 +209,8 @@ function FilterButtons<T extends string>({ options, value, onChange, labels, var
           onClick={() => onChange(option)} 
           className={cn("px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200", 
             value === option 
-              ? variant === 'result' 
-                ? option === 'WIN' 
-                  ? "bg-status-success text-white" 
-                  : option === 'LOSS' 
-                    ? "bg-status-error text-white" 
-                    : "bg-action-primary text-white"
-                : "bg-action-primary text-white"
-              : "bg-surface-card-alt text-text-secondary"
+              ? "bg-action-primary text-white"
+              : "bg-surface-card-alt text-text-secondary hover:text-text-primary"
           )}>
           {labels[option]}
         </button>

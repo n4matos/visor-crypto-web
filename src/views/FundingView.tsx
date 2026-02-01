@@ -1,29 +1,13 @@
-import { useState, useMemo } from 'react';
-import { DollarSign, Calendar, Clock, TrendingUp, TrendingDown } from 'lucide-react';
+import { useMemo, useEffect, useState } from 'react';
+import { DollarSign, Calendar, Clock, TrendingUp, TrendingDown, Loader2, AlertCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { PeriodSelector } from '@/components/PeriodSelector';
 import { MetricCard } from '@/components/cards';
-import type { Period, FundingDataPoint } from '@/types';
-
-// TODO: Substituir por chamadas à API
-const accountData = {
-  fundingToday: 0,
-  fundingWeek: 0,
-};
-
-const fundingData: FundingDataPoint[] = [];
-
-interface FundingSummaryItem {
-  asset: string;
-  today: number;
-  week: number;
-  month: number;
-  status: 'favorable' | 'unfavorable';
-}
-
-const fundingSummary: FundingSummaryItem[] = [];
+import { useFunding } from '@/hooks';
+import type { Period } from '@/types';
 import {
   XAxis,
   YAxis,
@@ -35,31 +19,114 @@ import {
   Cell,
 } from 'recharts';
 
-const PERIOD_DAYS: Record<Period, number> = {
-  '24h': 1,
-  '7d': 7,
-  '30d': 30,
-  '90d': 30, // Limitado a 30 dias
-  '1y': 30,
-  'all': 30,
-};
-
 export function FundingView() {
   const [period, setPeriod] = useState<Period>('30d');
-  
-  const { filteredData, totalMonth } = useMemo(() => {
-    const days = PERIOD_DAYS[period];
-    const data = fundingData.slice(-days);
-    const total = data.reduce((sum, d) => sum + d.total, 0);
+  const { funding, isLoading, error, fetchFunding } = useFunding();
+
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchFunding();
+  }, [fetchFunding]);
+
+  // Calculate totals based on selected period
+  const { totalToday, totalWeek, periodTotal } = useMemo(() => {
+    const today = funding.reduce((sum, f) => sum + parseFloat(f.today), 0);
+    const week = funding.reduce((sum, f) => sum + parseFloat(f.week), 0);
+    const month = funding.reduce((sum, f) => sum + parseFloat(f.month), 0);
+    const all = funding.reduce((sum, f) => sum + parseFloat(f.total), 0);
+    
+    // Select which value to show based on period
+    let periodValue = month;
+    switch (period) {
+      case '24h':
+        periodValue = today;
+        break;
+      case '7d':
+        periodValue = week;
+        break;
+      case '30d':
+        periodValue = month;
+        break;
+      case '90d':
+      case '1y':
+      case 'all':
+        // For longer periods, use total (or month if total is too old)
+        periodValue = all !== 0 ? all : month;
+        break;
+    }
     
     return {
-      filteredData: data,
-      totalMonth: total,
+      totalToday: today,
+      totalWeek: week,
+      periodTotal: periodValue,
     };
+  }, [funding, period]);
+
+  // Create chart data from funding - show appropriate field based on period
+  const chartData = useMemo(() => {
+    let field: 'today' | 'week' | 'month' | 'total' = 'month';
+    switch (period) {
+      case '24h':
+        field = 'today';
+        break;
+      case '7d':
+        field = 'week';
+        break;
+      case '30d':
+        field = 'month';
+        break;
+      case '90d':
+      case '1y':
+      case 'all':
+        field = 'total';
+        break;
+    }
+    
+    return funding.map(f => ({
+      symbol: f.symbol.replace('USDT', ''),
+      value: parseFloat(f[field]),
+      today: parseFloat(f.today),
+      week: parseFloat(f.week),
+      month: parseFloat(f.month),
+      total: parseFloat(f.total),
+    }));
+  }, [funding, period]);
+
+  // Get period label for display
+  const periodLabel = useMemo(() => {
+    switch (period) {
+      case '24h': return 'Hoje';
+      case '7d': return 'Semana';
+      case '30d': return 'Mês';
+      case '90d': return 'Trimestre';
+      case '1y': return 'Ano';
+      case 'all': return 'Total';
+      default: return 'Período';
+    }
   }, [period]);
 
-  const totalToday = accountData.fundingToday;
-  const totalWeek = accountData.fundingWeek;
+  if (isLoading && funding.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 space-y-4">
+        <Loader2 className="w-8 h-8 animate-spin text-action-primary" />
+        <p className="text-text-secondary">Carregando dados de funding...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 space-y-4">
+        <div className="flex items-center gap-2 text-status-error">
+          <AlertCircle className="w-6 h-6" />
+          <span>{error}</span>
+        </div>
+        <Button onClick={fetchFunding} variant="outline" className="border-border-default">
+          Tentar novamente
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -87,91 +154,129 @@ export function FundingView() {
           variant={totalWeek >= 0 ? 'success' : 'error'} 
         />
         <MetricCard 
-          title="Funding Mês" 
-          value={`$${Math.abs(totalMonth).toFixed(2)}`} 
-          change={{ value: totalMonth, percent: 0 }} 
+          title={`Funding ${periodLabel}`} 
+          value={`$${Math.abs(periodTotal).toFixed(2)}`} 
+          change={{ value: periodTotal, percent: 0 }} 
           icon={<Clock className="w-5 h-5" />} 
-          variant={totalMonth >= 0 ? 'success' : 'error'} 
+          variant={periodTotal >= 0 ? 'success' : 'error'} 
         />
-        <Card className={cn("p-5 border transition-all duration-200", totalMonth >= 0 ? "border-status-success/30 bg-status-success-muted" : "border-status-error/30 bg-status-error-muted")}>
+        <Card className={cn("p-5 border transition-all duration-200", periodTotal >= 0 ? "border-status-success/30 bg-status-success-muted" : "border-status-error/30 bg-status-error-muted")}>
           <div className="flex items-start justify-between mb-3">
-            <span className="text-sm font-medium text-text-secondary">Status</span>
-            {totalMonth >= 0 ? <TrendingUp className="w-5 h-5 text-status-success" /> : <TrendingDown className="w-5 h-5 text-status-error" />}
+            <span className="text-sm font-medium text-text-secondary">Status ({periodLabel})</span>
+            {periodTotal >= 0 ? <TrendingUp className="w-5 h-5 text-status-success" /> : <TrendingDown className="w-5 h-5 text-status-error" />}
           </div>
           <div>
-            <span className={cn("text-2xl lg:text-3xl font-bold font-mono", totalMonth >= 0 ? "text-status-success" : "text-status-error")}>
-              {totalMonth >= 0 ? 'FAVORÁVEL' : 'DESFAVORÁVEL'}
+            <span className={cn("text-2xl lg:text-3xl font-bold font-mono", periodTotal >= 0 ? "text-status-success" : "text-status-error")}>
+              {periodTotal >= 0 ? 'FAVORÁVEL' : 'DESFAVORÁVEL'}
             </span>
             <p className="text-xs text-text-muted mt-1">
-              {totalMonth >= 0 ? 'Você está recebendo mais funding do que pagando' : 'Você está pagando mais funding do que recebendo'}
+              {periodTotal >= 0 ? 'Você está recebendo mais funding do que pagando' : 'Você está pagando mais funding do que recebendo'}
             </p>
           </div>
         </Card>
       </div>
 
-      <Card className="p-5 border border-border-default bg-surface-card">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-semibold text-text-primary">Evolução do Funding</h2>
-            <p className="text-sm text-text-secondary">Funding rate acumulado ao longo do tempo</p>
+      {funding.length > 0 && (
+        <Card className="p-5 border border-border-default bg-surface-card">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-semibold text-text-primary">Funding por Ativo ({periodLabel})</h2>
+              <p className="text-sm text-text-secondary">Total acumulado por par de trading</p>
+            </div>
           </div>
-        </div>
-        <div className="h-[350px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={filteredData.map(d => ({ date: d.date, value: d.total }))} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
-              <XAxis 
-                dataKey="date" 
-                tick={{ fill: 'var(--chart-axis-label)', fontSize: 12 }} 
-                tickLine={false} 
-                axisLine={{ stroke: 'var(--chart-grid)' }} 
-                tickFormatter={(v) => { const d = new Date(v); return `${d.getDate()}/${d.getMonth() + 1}`; }} 
-              />
-              <YAxis 
-                tick={{ fill: 'var(--chart-axis-label)', fontSize: 12 }} 
-                tickLine={false} 
-                axisLine={false} 
-                tickFormatter={(v) => `$${v.toLocaleString()}`} 
-              />
-              <Tooltip content={({ active, payload, label }) => active && payload?.length ? (
-                <div className="bg-surface-card border border-border-default rounded-lg p-3 shadow-lg">
-                  <p className="text-sm text-text-secondary mb-1">{new Date(label || '').toLocaleDateString('pt-BR')}</p>
-                  <p className={cn("text-sm font-mono font-medium", (payload[0].value as number) >= 0 ? "text-status-success" : "text-status-error")}>
-                    ${payload[0].value?.toLocaleString()}
-                  </p>
-                </div>
-              ) : null} />
-              <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                {filteredData.map((d, i) => <Cell key={i} fill={d.total >= 0 ? 'var(--status-success)' : 'var(--status-error)'} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </Card>
+          <div className="h-[350px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+                <XAxis 
+                  dataKey="symbol" 
+                  tick={{ fill: 'var(--chart-axis-label)', fontSize: 12 }} 
+                  tickLine={false} 
+                  axisLine={{ stroke: 'var(--chart-grid)' }} 
+                />
+                <YAxis 
+                  tick={{ fill: 'var(--chart-axis-label)', fontSize: 12 }} 
+                  tickLine={false} 
+                  axisLine={false} 
+                  tickFormatter={(v) => `$${v.toLocaleString()}`} 
+                />
+                <Tooltip content={({ active, payload, label }) => active && payload?.length ? (
+                  <div className="bg-surface-card border border-border-default rounded-lg p-3 shadow-lg">
+                    <p className="text-sm font-medium text-text-primary mb-1">{label}</p>
+                    <p className="text-xs text-text-secondary mb-2">Funding ({periodLabel})</p>
+                    <p className={cn("text-sm font-mono font-medium", (payload[0].value as number) >= 0 ? "text-status-success" : "text-status-error")}>
+                      ${(payload[0].value as number).toFixed(2)}
+                    </p>
+                  </div>
+                ) : null} />
+                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                  {chartData.map((d, i) => (
+                    <Cell key={i} fill={d.value >= 0 ? 'var(--status-success)' : 'var(--status-error)'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      )}
 
       <div>
         <h2 className="text-lg font-semibold text-text-primary mb-4">Breakdown por Ativo</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {fundingSummary.map((asset) => (
-            <Card key={asset.asset} 
-              className={cn("p-5 border transition-all duration-200 card-hover", 
-                asset.today >= 0 ? "border-status-success/30 bg-status-success-muted/50" : "border-status-error/30 bg-status-error-muted/50"
-              )}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-text-primary">{asset.asset}</h3>
-                <Badge variant={asset.today >= 0 ? 'default' : 'destructive'} 
-                  className={asset.today >= 0 ? "bg-status-success/20 text-status-success border-status-success/30" : ""}>
-                  {asset.today >= 0 ? 'RECEBENDO' : 'PAGANDO'}
-                </Badge>
-              </div>
-              <div className="space-y-3">
-                <FundingRow label="Hoje" value={asset.today} />
-                <FundingRow label="Semana" value={asset.week} />
-                <FundingRow label="Mês" value={asset.month} />
-              </div>
-            </Card>
-          ))}
-        </div>
+        {funding.length === 0 ? (
+          <Card className="p-8 border border-border-default bg-surface-card text-center">
+            <p className="text-text-secondary">Nenhum dado de funding disponível.</p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {funding.map((asset) => {
+              // Select which value to display based on period
+              let displayValue = parseFloat(asset.month);
+              switch (period) {
+                case '24h':
+                  displayValue = parseFloat(asset.today);
+                  break;
+                case '7d':
+                  displayValue = parseFloat(asset.week);
+                  break;
+                case '30d':
+                  displayValue = parseFloat(asset.month);
+                  break;
+                case '90d':
+                case '1y':
+                case 'all':
+                  displayValue = parseFloat(asset.total) || parseFloat(asset.month);
+                  break;
+              }
+              
+              return (
+                <Card key={asset.symbol} 
+                  className={cn("p-5 border transition-all duration-200 card-hover", 
+                    displayValue >= 0 ? "border-status-success/30 bg-status-success-muted/50" : "border-status-error/30 bg-status-error-muted/50"
+                  )}>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-text-primary">{asset.symbol.replace('USDT', '')}</h3>
+                    <Badge variant={displayValue >= 0 ? 'default' : 'destructive'} 
+                      className={displayValue >= 0 ? "bg-status-success/20 text-status-success border-status-success/30" : ""}>
+                      {displayValue >= 0 ? 'RECEBENDO' : 'PAGANDO'}
+                    </Badge>
+                  </div>
+                  <div className="space-y-3">
+                    {period === '24h' || period === 'all' ? (
+                      <FundingRow label="Hoje" value={parseFloat(asset.today)} />
+                    ) : null}
+                    {period === '7d' || period === 'all' ? (
+                      <FundingRow label="Semana" value={parseFloat(asset.week)} />
+                    ) : null}
+                    {period === '30d' || period === '90d' || period === '1y' || period === 'all' ? (
+                      <FundingRow label="Mês" value={parseFloat(asset.month)} />
+                    ) : null}
+                    <FundingRow label="Total" value={parseFloat(asset.total)} isHighlight />
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -180,12 +285,13 @@ export function FundingView() {
 interface FundingRowProps {
   label: string;
   value: number;
+  isHighlight?: boolean;
 }
 
-function FundingRow({ label, value }: FundingRowProps) {
+function FundingRow({ label, value, isHighlight }: FundingRowProps) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-sm text-text-secondary">{label}</span>
+      <span className={cn("text-sm", isHighlight ? "text-text-primary font-medium" : "text-text-secondary")}>{label}</span>
       <span className={cn("text-sm font-mono font-medium", value >= 0 ? "text-status-success" : "text-status-error")}>
         {value >= 0 ? '+' : ''}${value.toFixed(2)}
       </span>
