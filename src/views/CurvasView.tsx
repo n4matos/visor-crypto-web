@@ -28,7 +28,7 @@ export function CurvasView() {
   }, [period, fetchDashboardData]);
 
   // Calculate returns from equity curve data
-  const { usdReturn, btcReturn, firstPoint, lastPoint } = useMemo(() => {
+  const { usdReturn, btcReturn, usdReturnAbs, btcReturnAbs, firstPoint, lastPoint } = useMemo(() => {
     const points = equityCurve?.points || [];
     if (points.length < 2) {
       return {
@@ -36,17 +36,24 @@ export function CurvasView() {
         lastPoint: { equityUSD: 0, equityBTC: 0, date: '', pnlCumulative: 0 },
         usdReturn: 0,
         btcReturn: 0,
+        usdReturnAbs: 0,
+        btcReturnAbs: 0,
       };
     }
 
     const first = points[0];
     const last = points[points.length - 1];
 
+    const usdReturnAbs = last.equityUSD - first.equityUSD;
+    const btcReturnAbs = last.equityBTC - first.equityBTC;
+
     return {
       firstPoint: first,
       lastPoint: last,
       usdReturn: first.equityUSD > 0 ? ((last.equityUSD - first.equityUSD) / first.equityUSD) * 100 : 0,
       btcReturn: first.equityBTC > 0 ? ((last.equityBTC - first.equityBTC) / first.equityBTC) * 100 : 0,
+      usdReturnAbs,
+      btcReturnAbs,
     };
   }, [equityCurve]);
 
@@ -124,17 +131,17 @@ export function CurvasView() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard 
               title="Retorno Total (USD)" 
-              value={`${usdReturn >= 0 ? '+' : ''}${usdReturn.toFixed(2)}%`} 
-              change={{ value: usdReturn, percent: usdReturn }} 
+              value={`${usdReturnAbs >= 0 ? '+' : ''}$${Math.abs(usdReturnAbs).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} 
+              change={{ value: usdReturnAbs, percent: usdReturn }} 
               icon={<TrendingUp className="w-5 h-5" />} 
-              variant={usdReturn >= 0 ? 'success' : 'error'} 
+              variant={usdReturnAbs >= 0 ? 'success' : 'error'} 
             />
             <MetricCard 
               title="Retorno Total (BTC)" 
-              value={`${btcReturn >= 0 ? '+' : ''}${btcReturn.toFixed(2)}%`} 
-              change={{ value: btcReturn, percent: btcReturn }} 
+              value={`${btcReturnAbs >= 0 ? '+' : ''}${Math.abs(btcReturnAbs).toFixed(6)} ₿`} 
+              change={{ value: btcReturnAbs, percent: btcReturn }} 
               icon={<Activity className="w-5 h-5" />} 
-              variant={btcReturn >= 0 ? 'success' : 'error'} 
+              variant={btcReturnAbs >= 0 ? 'success' : 'error'} 
             />
             <MetricCard 
               title="Drawdown Máximo" 
