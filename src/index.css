@@ -1,0 +1,286 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Superfícies - DAO Activity Dashboard */
+    --surface-page: #0B0D12;
+    --surface-sidebar: #10131A;
+    --surface-card: #14171F;
+    --surface-card-alt: #191D27;
+    --surface-elevated: #1E222D;
+    --surface-input: #1A1E28;
+    --surface-overlay: rgba(0, 0, 0, 0.60);
+
+    /* Texto */
+    --text-primary: #FFFFFF;
+    --text-secondary: #A1A7B5;
+    --text-muted: #6B7280;
+    --text-disabled: #4B5060;
+    --text-on-primary: #FFFFFF;
+    --text-on-surface: #C8CDD8;
+    --text-link: #8B8FFE;
+
+    /* Ações */
+    --action-primary: #7C5CFC;
+    --action-primary-hover: #9178FF;
+    --action-primary-muted: rgba(124, 92, 252, 0.15);
+    --action-secondary: #2A2D38;
+    --action-secondary-hover: #33374A;
+
+    /* Acentos */
+    --accent-yellow: #F5D245;
+    --accent-green: #34D399;
+    --accent-purple: #7C5CFC;
+    --accent-purple-light: #A78BFA;
+    --accent-red: #F87171;
+    --accent-orange: #FB923C;
+
+    /* Bordas */
+    --border-default: #1F2330;
+    --border-subtle: #1A1D26;
+    --border-strong: #2D3140;
+    --border-focus: #7C5CFC;
+    --border-accent: rgba(124, 92, 252, 0.40);
+
+    /* Status */
+    --status-success: #34D399;
+    --status-success-muted: rgba(52, 211, 153, 0.15);
+    --status-warning: #FBBF24;
+    --status-error: #F87171;
+    --status-error-muted: rgba(248, 113, 113, 0.15);
+    --status-info: #7C5CFC;
+
+    /* Gráficos */
+    --chart-line-1: #7C5CFC;
+    --chart-line-2: #F5D245;
+    --chart-bar-1: #7C5CFC;
+    --chart-bar-2: #A78BFA;
+    --chart-area-fill: rgba(124, 92, 252, 0.10);
+    --chart-grid: #1A1E28;
+    --chart-axis-label: #6B7280;
+
+    /* shadcn variables */
+    --background: 220 20% 4%;
+    --foreground: 0 0% 100%;
+    --card: 220 18% 10%;
+    --card-foreground: 0 0% 100%;
+    --popover: 220 18% 12%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 252 95% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 225 14% 19%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 225 14% 15%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 252 95% 65%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 16% 15%;
+    --input: 220 14% 14%;
+    --ring: 252 95% 65%;
+    --radius: 0.75rem;
+  }
+
+  /* Light Theme - DAO Style */
+  .light {
+    --surface-page: #F8FAFC;
+    --surface-sidebar: #FFFFFF;
+    --surface-card: #FFFFFF;
+    --surface-card-alt: #F1F5F9;
+    --surface-elevated: #E2E8F0;
+    --surface-input: #F1F5F9;
+    --surface-overlay: rgba(0, 0, 0, 0.40);
+
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #94A3B8;
+    --text-disabled: #CBD5E1;
+    --text-on-primary: #FFFFFF;
+    --text-on-surface: #334155;
+    --text-link: #6366F1;
+
+    --action-primary: #7C5CFC;
+    --action-primary-hover: #6B4FE0;
+    --action-primary-muted: rgba(124, 92, 252, 0.12);
+    --action-secondary: #E2E8F0;
+    --action-secondary-hover: #CBD5E1;
+
+    --accent-yellow: #D97706;
+    --accent-green: #059669;
+    --accent-purple: #7C5CFC;
+    --accent-purple-light: #8B5CF6;
+    --accent-red: #DC2626;
+    --accent-orange: #EA580C;
+
+    --border-default: #E2E8F0;
+    --border-subtle: #F1F5F9;
+    --border-strong: #CBD5E1;
+    --border-focus: #7C5CFC;
+    --border-accent: rgba(124, 92, 252, 0.30);
+
+    --status-success: #059669;
+    --status-success-muted: rgba(5, 150, 105, 0.12);
+    --status-warning: #D97706;
+    --status-error: #DC2626;
+    --status-error-muted: rgba(220, 38, 38, 0.12);
+    --status-info: #7C5CFC;
+
+    --chart-line-1: #7C5CFC;
+    --chart-line-2: #D97706;
+    --chart-bar-1: #7C5CFC;
+    --chart-bar-2: #8B5CF6;
+    --chart-area-fill: rgba(124, 92, 252, 0.08);
+    --chart-grid: #E2E8F0;
+    --chart-axis-label: #94A3B8;
+
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 252 95% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 252 95% 65%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 252 95% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: var(--surface-page);
+    color: var(--text-primary);
+    transition: background-color 300ms ease-out, color 300ms ease-out;
+  }
+  
+  .font-mono {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+}
+
+@layer utilities {
+  /* Surface utilities */
+  .bg-surface-page { background-color: var(--surface-page); }
+  .bg-surface-sidebar { background-color: var(--surface-sidebar); }
+  .bg-surface-card { background-color: var(--surface-card); }
+  .bg-surface-card-alt { background-color: var(--surface-card-alt); }
+  .bg-surface-elevated { background-color: var(--surface-elevated); }
+  .bg-surface-input { background-color: var(--surface-input); }
+  
+  /* Text utilities */
+  .text-text-primary { color: var(--text-primary); }
+  .text-text-secondary { color: var(--text-secondary); }
+  .text-text-muted { color: var(--text-muted); }
+  .text-text-disabled { color: var(--text-disabled); }
+  
+  /* Action utilities */
+  .bg-action-primary { background-color: var(--action-primary); }
+  .bg-action-primary-hover:hover { background-color: var(--action-primary-hover); }
+  .bg-action-secondary { background-color: var(--action-secondary); }
+  .bg-action-primary-muted { background-color: var(--action-primary-muted); }
+  
+  /* Accent utilities */
+  .text-accent-yellow { color: var(--accent-yellow); }
+  .text-accent-green { color: var(--accent-green); }
+  .text-accent-purple { color: var(--accent-purple); }
+  .text-accent-red { color: var(--accent-red); }
+  .text-accent-orange { color: var(--accent-orange); }
+  .bg-accent-green { background-color: var(--accent-green); }
+  .bg-accent-yellow { background-color: var(--accent-yellow); }
+  .bg-accent-purple { background-color: var(--accent-purple); }
+  .bg-accent-red { background-color: var(--accent-red); }
+  
+  /* Border utilities */
+  .border-border-default { border-color: var(--border-default); }
+  .border-border-subtle { border-color: var(--border-subtle); }
+  .border-border-strong { border-color: var(--border-strong); }
+  
+  /* Status utilities */
+  .text-status-success { color: var(--status-success); }
+  .text-status-warning { color: var(--status-warning); }
+  .text-status-error { color: var(--status-error); }
+  .bg-status-success-muted { background-color: var(--status-success-muted); }
+  .bg-status-error-muted { background-color: var(--status-error-muted); }
+  
+  /* Chart utilities */
+  .text-chart-line-1 { color: var(--chart-line-1); }
+  .text-chart-line-2 { color: var(--chart-line-2); }
+  .stroke-chart-line-1 { stroke: var(--chart-line-1); }
+  .fill-chart-area { fill: var(--chart-area-fill); }
+  
+  /* Glow effects */
+  .shadow-glow {
+    box-shadow: 0 0 20px rgba(124, 92, 252, 0.15);
+  }
+  
+  .shadow-glow-strong {
+    box-shadow: 0 0 30px rgba(124, 92, 252, 0.25);
+  }
+  
+  /* Custom scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: var(--surface-card-alt);
+    border-radius: 3px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--border-default);
+    border-radius: 3px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--border-strong);
+  }
+  
+  /* Animations */
+  .animate-fade-in {
+    animation: fadeIn 400ms ease-out forwards;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  /* Card hover */
+  .card-hover {
+    transition: all 150ms ease;
+  }
+  
+  .card-hover:hover {
+    border-color: var(--border-strong);
+  }
+  
+  .light .card-hover:hover {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  }
+}
