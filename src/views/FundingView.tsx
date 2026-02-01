@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useState } from 'react';
-import { DollarSign, Calendar, Clock, TrendingUp, TrendingDown, Loader2, AlertCircle } from 'lucide-react';
+import { DollarSign, Calendar, Clock, TrendingUp, TrendingDown, Loader2, AlertCircle, Bitcoin } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,17 @@ import {
   Cell,
 } from 'recharts';
 
+// Helper to get currency symbol
+const getCurrencySymbol = (currency: string): string => {
+  const symbols: Record<string, string> = {
+    'USDT': '$',
+    'BTC': '₿',
+    'ETH': 'Ξ',
+    'SOL': '◎',
+  };
+  return symbols[currency] || currency;
+};
+
 export function FundingView() {
   const [period, setPeriod] = useState<Period>('30d');
   const { funding, isLoading, error, fetchFunding } = useFunding();
@@ -28,12 +39,19 @@ export function FundingView() {
     fetchFunding();
   }, [fetchFunding]);
 
-  // Calculate totals based on selected period
+  // Separate USDT and non-USDT funding
+  const { usdtFunding, otherFunding } = useMemo(() => {
+    const usdt = funding.filter(f => f.currency === 'USDT');
+    const other = funding.filter(f => f.currency !== 'USDT');
+    return { usdtFunding: usdt, otherFunding: other };
+  }, [funding]);
+
+  // Calculate totals for USDT only (standardized view)
   const { totalToday, totalWeek, periodTotal } = useMemo(() => {
-    const today = funding.reduce((sum, f) => sum + parseFloat(f.today), 0);
-    const week = funding.reduce((sum, f) => sum + parseFloat(f.week), 0);
-    const month = funding.reduce((sum, f) => sum + parseFloat(f.month), 0);
-    const all = funding.reduce((sum, f) => sum + parseFloat(f.total), 0);
+    const today = usdtFunding.reduce((sum, f) => sum + parseFloat(f.today), 0);
+    const week = usdtFunding.reduce((sum, f) => sum + parseFloat(f.week), 0);
+    const month = usdtFunding.reduce((sum, f) => sum + parseFloat(f.month), 0);
+    const all = usdtFunding.reduce((sum, f) => sum + parseFloat(f.total), 0);
     
     // Select which value to show based on period
     let periodValue = month;
@@ -50,7 +68,6 @@ export function FundingView() {
       case '90d':
       case '1y':
       case 'all':
-        // For longer periods, use total (or month if total is too old)
         periodValue = all !== 0 ? all : month;
         break;
     }
@@ -60,9 +77,9 @@ export function FundingView() {
       totalWeek: week,
       periodTotal: periodValue,
     };
-  }, [funding, period]);
+  }, [usdtFunding, period]);
 
-  // Create chart data from funding - show appropriate field based on period
+  // Create chart data from USDT funding only
   const chartData = useMemo(() => {
     let field: 'today' | 'week' | 'month' | 'total' = 'month';
     switch (period) {
@@ -82,15 +99,15 @@ export function FundingView() {
         break;
     }
     
-    return funding.map(f => ({
-      symbol: f.symbol.replace('USDT', ''),
+    return usdtFunding.map(f => ({
+      symbol: f.symbol.replace('USDT', '').replace('USD', ''), // Remove suffix for cleaner display
       value: parseFloat(f[field]),
       today: parseFloat(f.today),
       week: parseFloat(f.week),
       month: parseFloat(f.month),
       total: parseFloat(f.total),
     }));
-  }, [funding, period]);
+  }, [usdtFunding, period]);
 
   // Get period label for display
   const periodLabel = useMemo(() => {
@@ -138,23 +155,24 @@ export function FundingView() {
         <PeriodSelector value={period} onChange={setPeriod} />
       </div>
 
+      {/* Main Stats Cards - USDT Only */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard 
-          title="Funding Hoje" 
+          title="Funding Hoje (USDT)" 
           value={`$${Math.abs(totalToday).toFixed(2)}`} 
           change={{ value: totalToday, percent: 0 }} 
           icon={<DollarSign className="w-5 h-5" />} 
           variant={totalToday >= 0 ? 'success' : 'error'} 
         />
         <MetricCard 
-          title="Funding Semana" 
+          title="Funding Semana (USDT)" 
           value={`$${Math.abs(totalWeek).toFixed(2)}`} 
           change={{ value: totalWeek, percent: 0 }} 
           icon={<Calendar className="w-5 h-5" />} 
           variant={totalWeek >= 0 ? 'success' : 'error'} 
         />
         <MetricCard 
-          title={`Funding ${periodLabel}`} 
+          title={`Funding ${periodLabel} (USDT)`} 
           value={`$${Math.abs(periodTotal).toFixed(2)}`} 
           change={{ value: periodTotal, percent: 0 }} 
           icon={<Clock className="w-5 h-5" />} 
@@ -176,12 +194,13 @@ export function FundingView() {
         </Card>
       </div>
 
-      {funding.length > 0 && (
+      {/* Chart - USDT Only */}
+      {chartData.length > 0 && (
         <Card className="p-5 border border-border-default bg-surface-card">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-lg font-semibold text-text-primary">Funding por Ativo ({periodLabel})</h2>
-              <p className="text-sm text-text-secondary">Total acumulado por par de trading</p>
+              <p className="text-sm text-text-secondary">Valores em USDT - Contratos perpétuos margem USDT</p>
             </div>
           </div>
           <div className="h-[350px]">
@@ -203,9 +222,9 @@ export function FundingView() {
                 <Tooltip content={({ active, payload, label }) => active && payload?.length ? (
                   <div className="bg-surface-card border border-border-default rounded-lg p-3 shadow-lg">
                     <p className="text-sm font-medium text-text-primary mb-1">{label}</p>
-                    <p className="text-xs text-text-secondary mb-2">Funding ({periodLabel})</p>
+                    <p className="text-xs text-text-secondary mb-2">Funding ({periodLabel}) - USDT</p>
                     <p className={cn("text-sm font-mono font-medium", (payload[0].value as number) >= 0 ? "text-status-success" : "text-status-error")}>
-                      ${(payload[0].value as number).toFixed(2)}
+                      ${(payload[0].value as number).toFixed(4)}
                     </p>
                   </div>
                 ) : null} />
@@ -220,16 +239,12 @@ export function FundingView() {
         </Card>
       )}
 
-      <div>
-        <h2 className="text-lg font-semibold text-text-primary mb-4">Breakdown por Ativo</h2>
-        {funding.length === 0 ? (
-          <Card className="p-8 border border-border-default bg-surface-card text-center">
-            <p className="text-text-secondary">Nenhum dado de funding disponível.</p>
-          </Card>
-        ) : (
+      {/* Breakdown by Asset - USDT */}
+      {usdtFunding.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold text-text-primary mb-4">Breakdown por Ativo (USDT)</h2>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {funding.map((asset) => {
-              // Select which value to display based on period
+            {usdtFunding.map((asset) => {
               let displayValue = parseFloat(asset.month);
               switch (period) {
                 case '24h':
@@ -261,23 +276,78 @@ export function FundingView() {
                     </Badge>
                   </div>
                   <div className="space-y-3">
-                    {period === '24h' || period === 'all' ? (
-                      <FundingRow label="Hoje" value={parseFloat(asset.today)} />
-                    ) : null}
-                    {period === '7d' || period === 'all' ? (
-                      <FundingRow label="Semana" value={parseFloat(asset.week)} />
-                    ) : null}
-                    {period === '30d' || period === '90d' || period === '1y' || period === 'all' ? (
-                      <FundingRow label="Mês" value={parseFloat(asset.month)} />
-                    ) : null}
-                    <FundingRow label="Total" value={parseFloat(asset.total)} isHighlight />
+                    <FundingRow label="Hoje" value={parseFloat(asset.today)} currency="USDT" />
+                    <FundingRow label="Semana" value={parseFloat(asset.week)} currency="USDT" />
+                    <FundingRow label="Mês" value={parseFloat(asset.month)} currency="USDT" isHighlight />
+                    <FundingRow label="Total" value={parseFloat(asset.total)} currency="USDT" />
                   </div>
                 </Card>
               );
             })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Other Currencies Section */}
+      {otherFunding.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold text-text-primary mb-4">Funding em Outras Moedas</h2>
+          <p className="text-sm text-text-secondary mb-4">
+            Estes valores são pagos na moeda base do contrato (não convertidos para USDT)
+          </p>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {otherFunding.map((asset) => {
+              let displayValue = parseFloat(asset.month);
+              switch (period) {
+                case '24h':
+                  displayValue = parseFloat(asset.today);
+                  break;
+                case '7d':
+                  displayValue = parseFloat(asset.week);
+                  break;
+                case '30d':
+                  displayValue = parseFloat(asset.month);
+                  break;
+                case '90d':
+                case '1y':
+                case 'all':
+                  displayValue = parseFloat(asset.total) || parseFloat(asset.month);
+                  break;
+              }
+              
+              return (
+                <Card key={asset.symbol} 
+                  className={cn("p-5 border transition-all duration-200 card-hover", 
+                    displayValue >= 0 ? "border-status-success/30 bg-status-success-muted/50" : "border-status-error/30 bg-status-error-muted/50"
+                  )}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Bitcoin className="w-5 h-5 text-text-secondary" />
+                      <h3 className="text-lg font-semibold text-text-primary">{asset.symbol}</h3>
+                    </div>
+                    <Badge variant={displayValue >= 0 ? 'default' : 'destructive'} 
+                      className={displayValue >= 0 ? "bg-status-success/20 text-status-success border-status-success/30" : ""}>
+                      {displayValue >= 0 ? 'RECEBENDO' : 'PAGANDO'}
+                    </Badge>
+                  </div>
+                  <div className="space-y-3">
+                    <FundingRow label="Hoje" value={parseFloat(asset.today)} currency={asset.currency} />
+                    <FundingRow label="Semana" value={parseFloat(asset.week)} currency={asset.currency} />
+                    <FundingRow label="Mês" value={parseFloat(asset.month)} currency={asset.currency} isHighlight />
+                    <FundingRow label="Total" value={parseFloat(asset.total)} currency={asset.currency} />
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {funding.length === 0 && (
+        <Card className="p-8 border border-border-default bg-surface-card text-center">
+          <p className="text-text-secondary">Nenhum dado de funding disponível.</p>
+        </Card>
+      )}
     </div>
   );
 }
@@ -285,15 +355,26 @@ export function FundingView() {
 interface FundingRowProps {
   label: string;
   value: number;
+  currency: string;
   isHighlight?: boolean;
 }
 
-function FundingRow({ label, value, isHighlight }: FundingRowProps) {
+function FundingRow({ label, value, currency, isHighlight }: FundingRowProps) {
+  const symbol = getCurrencySymbol(currency);
+  const isUSDT = currency === 'USDT';
+  
   return (
     <div className="flex items-center justify-between">
       <span className={cn("text-sm", isHighlight ? "text-text-primary font-medium" : "text-text-secondary")}>{label}</span>
       <span className={cn("text-sm font-mono font-medium", value >= 0 ? "text-status-success" : "text-status-error")}>
-        {value >= 0 ? '+' : ''}${value.toFixed(2)}
+        {isUSDT ? (
+          `$${Math.abs(value).toFixed(4)}`
+        ) : (
+          <span className="flex items-center gap-1">
+            <span className="text-text-muted">{symbol}</span>
+            {Math.abs(value).toFixed(8)} {currency}
+          </span>
+        )}
       </span>
     </div>
   );
