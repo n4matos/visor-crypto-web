@@ -4,8 +4,13 @@ import {
   TrendingUp,
   TrendingDown,
   Activity,
+  Bitcoin,
+  BarChart3,
+  Target,
+  Zap,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+
 import { cn } from '@/lib/utils';
 import { PeriodSelector } from '@/components/PeriodSelector';
 import { MetricCard } from '@/components/cards';
@@ -98,14 +103,14 @@ export function PortfolioView() {
 
   if (!hasData) {
     return (
-      <div className="space-y-6 animate-fade-in">
-        <PageHeader title="Portfolio" subtitle="Acompanhe a evolucao do seu capital">
+      <div className="space-y-4 animate-fade-in">
+        <PageHeader title="Portfolio" subtitle="Acompanhe a evolução do seu capital">
           <PeriodSelector value={period} onChange={setPeriod} />
         </PageHeader>
         <ViewEmpty
           icon={<TrendingUp className="w-8 h-8 text-text-muted" />}
-          title="Sem dados disponiveis"
-          description="Nao encontramos dados historicos para o periodo selecionado. Certifique-se de ter sincronizado seus dados da Bybit em Configuracoes."
+          title="Sem dados disponíveis"
+          description="Não encontramos dados históricos para o período selecionado. Certifique-se de ter sincronizado seus dados da Bybit em Configurações."
           action={{ label: 'Atualizar dados', onClick: () => fetchDashboardData(period, activePortfolioId), isLoading }}
         />
       </div>
@@ -113,106 +118,107 @@ export function PortfolioView() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 animate-fade-in">
       {/* Header + Period Selector */}
-      <PageHeader title="Portfolio" subtitle="Acompanhe a evolucao do seu capital">
+      <PageHeader title="Portfolio" subtitle="Acompanhe a evolução do seu capital">
         <PeriodSelector value={period} onChange={setPeriod} />
       </PageHeader>
 
-      {/* BTC Accumulation Hero */}
+      {/* BTC Accumulation Hero - Compact */}
       <Card className={cn(
-        "p-6 border bg-surface-card",
+        "p-4 border bg-surface-card",
         btcReturn >= 0 ? "border-status-success/30" : "border-status-error/30"
       )}>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <div className={cn(
-              "w-14 h-14 rounded-xl flex items-center justify-center",
+              "w-10 h-10 rounded-xl flex items-center justify-center",
               btcReturn >= 0 ? "bg-status-success/20" : "bg-status-error/20"
             )}>
-              <span className="text-2xl font-bold text-text-primary">&#8383;</span>
+              <Bitcoin className={cn("w-5 h-5", btcReturn >= 0 ? "text-status-success" : "text-status-error")} />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-text-primary">Acumulacao de BTC</h3>
-              <p className="text-text-secondary">Seu objetivo principal: acumular Bitcoin ao longo do tempo</p>
+              <h3 className="text-sm font-semibold text-text-primary">Acumulação de BTC</h3>
+              <p className="text-xs text-text-secondary">{firstPoint.equityBTC.toFixed(6)} → {lastPoint.equityBTC.toFixed(6)} BTC</p>
             </div>
           </div>
           <div className="text-right">
             <p className={cn(
-              "text-3xl font-bold font-mono",
+              "text-2xl font-bold font-mono",
               btcReturn >= 0 ? "text-status-success" : "text-status-error"
             )}>
               {btcReturn >= 0 ? '+' : ''}{btcReturn.toFixed(2)}%
-            </p>
-            <p className="text-sm text-text-secondary font-mono">
-              {firstPoint.equityBTC.toFixed(6)} &#8383; &rarr; {lastPoint.equityBTC.toFixed(6)} &#8383;
             </p>
           </div>
         </div>
       </Card>
 
-      {/* Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Metric Cards - Compact Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <MetricCard
           title="Saldo Total"
           value={`$${summary?.currentEquityUSD.toLocaleString() || '0'}`}
           subtitle={`${summary?.currentEquityBTC.toFixed(6) || '0'} BTC`}
           change={{ value: usdReturnAbs, percent: usdReturn }}
-          icon={<Wallet className="w-5 h-5" />}
+          icon={<Wallet className="w-4 h-4" />}
+          size="compact"
         />
         <MetricCard
           title="Retorno (USD)"
           value={`${usdReturnAbs >= 0 ? '+' : ''}$${Math.abs(usdReturnAbs).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           change={{ value: usdReturnAbs, percent: usdReturn }}
-          icon={<TrendingUp className="w-5 h-5" />}
+          icon={<TrendingUp className="w-4 h-4" />}
           variant={usdReturnAbs >= 0 ? 'success' : 'error'}
+          size="compact"
         />
         <MetricCard
-          title="Drawdown Maximo"
+          title="Drawdown Máximo"
           value={`${metrics.maxDrawdown.toFixed(2)}%`}
-          icon={<TrendingDown className="w-5 h-5" />}
+          icon={<TrendingDown className="w-4 h-4" />}
           variant="error"
+          size="compact"
         />
         <MetricCard
           title="Sharpe Ratio"
           value={metrics.sharpeRatio.toFixed(2)}
-          icon={<Activity className="w-5 h-5" />}
+          icon={<Activity className="w-4 h-4" />}
           variant="neutral"
+          size="compact"
         />
       </div>
 
       {/* Main Equity Curve - Full Width */}
-      <Card className="p-5 border border-border-default bg-surface-card">
-        <div className="flex items-center justify-between mb-4">
+      <Card className="p-4 border border-border-default bg-surface-card">
+        <div className="flex items-center justify-between mb-3">
           <div>
-            <h2 className="text-lg font-semibold text-text-primary">Equity Curve</h2>
-            <p className="text-sm text-text-secondary">Comparativo USD vs BTC</p>
+            <h2 className="text-sm font-semibold text-text-primary">Equity Curve</h2>
+            <p className="text-xs text-text-secondary">Comparativo USD vs BTC</p>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[var(--chart-line-1)]" />
-              <span className="text-sm text-text-secondary">USD</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-[var(--chart-line-1)]" />
+              <span className="text-xs text-text-secondary">USD</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[var(--accent-yellow)]" />
-              <span className="text-sm text-text-secondary">BTC</span>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-[var(--accent-yellow)]" />
+              <span className="text-xs text-text-secondary">BTC</span>
             </div>
           </div>
         </div>
-        <div className="h-[400px]">
+        <div className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={equityCurve?.points || []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
               <XAxis
                 dataKey="date"
-                tick={{ fill: 'var(--chart-axis-label)', fontSize: 12 }}
+                tick={{ fill: 'var(--chart-axis-label)', fontSize: 11 }}
                 tickLine={false}
                 axisLine={{ stroke: 'var(--chart-grid)' }}
                 tickFormatter={(v) => { const d = new Date(v); return `${d.getDate()}/${d.getMonth() + 1}`; }}
               />
               <YAxis
                 yAxisId="left"
-                tick={{ fill: 'var(--chart-axis-label)', fontSize: 12 }}
+                tick={{ fill: 'var(--chart-axis-label)', fontSize: 11 }}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(v) => `$${v.toLocaleString()}`}
@@ -220,7 +226,7 @@ export function PortfolioView() {
               <YAxis
                 yAxisId="right"
                 orientation="right"
-                tick={{ fill: 'var(--chart-axis-label)', fontSize: 12 }}
+                tick={{ fill: 'var(--chart-axis-label)', fontSize: 11 }}
                 tickLine={false}
                 axisLine={false}
               />
@@ -239,25 +245,25 @@ export function PortfolioView() {
       </Card>
 
       {/* PnL Cumulative + Performance Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-5 border border-border-default bg-surface-card">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-text-primary">PnL Acumulado</h2>
-            <p className="text-sm text-text-secondary">Lucro/Prejuizo ao longo do tempo</p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <Card className="p-4 border border-border-default bg-surface-card">
+          <div className="mb-3">
+            <h2 className="text-sm font-semibold text-text-primary">PnL Acumulado</h2>
+            <p className="text-xs text-text-secondary">Lucro/Prejuízo ao longo do tempo</p>
           </div>
-          <div className="h-[250px]">
+          <div className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={equityCurve?.points || []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
                 <XAxis
                   dataKey="date"
-                  tick={{ fill: 'var(--chart-axis-label)', fontSize: 12 }}
+                  tick={{ fill: 'var(--chart-axis-label)', fontSize: 11 }}
                   tickLine={false}
                   axisLine={{ stroke: 'var(--chart-grid)' }}
                   tickFormatter={(v) => { const d = new Date(v); return `${d.getDate()}/${d.getMonth() + 1}`; }}
                 />
                 <YAxis
-                  tick={{ fill: 'var(--chart-axis-label)', fontSize: 12 }}
+                  tick={{ fill: 'var(--chart-axis-label)', fontSize: 11 }}
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={(v) => `$${v.toLocaleString()}`}
@@ -274,38 +280,44 @@ export function PortfolioView() {
           </div>
         </Card>
 
-        <Card className="p-5 border border-border-default bg-surface-card">
-          <h2 className="text-lg font-semibold text-text-primary mb-4">Estatisticas de Performance</h2>
-          <div className="space-y-4">
+        <Card className="p-4 border border-border-default bg-surface-card">
+          <h2 className="text-sm font-semibold text-text-primary mb-3">Estatísticas de Performance</h2>
+          <div className="space-y-2">
             <StatItem
-              icon={<Activity className="w-5 h-5 text-action-primary" />}
+              icon={<Target className="w-4 h-4 text-action-primary" />}
+              iconBg="bg-action-primary-muted"
               label="Taxa de Acerto"
               value={`${metrics.winRate.toFixed(1)}%`}
             />
             <StatItem
-              icon={<Activity className="w-5 h-5 text-action-primary" />}
+              icon={<BarChart3 className="w-4 h-4 text-action-primary" />}
+              iconBg="bg-action-primary-muted"
               label="Profit Factor"
               value={metrics.profitFactor.toFixed(2)}
             />
             <StatItem
-              icon={<Activity className="w-5 h-5 text-action-primary" />}
+              icon={<Zap className="w-4 h-4 text-action-primary" />}
+              iconBg="bg-action-primary-muted"
               label="Volatilidade"
               value={`${metrics.volatility.toFixed(2)}%`}
             />
             <StatItem
-              icon={<TrendingUp className="w-5 h-5 text-status-success" />}
+              icon={<TrendingUp className="w-4 h-4 text-status-success" />}
+              iconBg="bg-status-success-muted"
               label="Melhor Trade"
               value={`+$${metrics.bestTrade.toFixed(2)}`}
               valueColor="text-status-success"
             />
             <StatItem
-              icon={<TrendingDown className="w-5 h-5 text-status-error" />}
+              icon={<TrendingDown className="w-4 h-4 text-status-error" />}
+              iconBg="bg-status-error-muted"
               label="Pior Trade"
               value={`$${metrics.worstTrade.toFixed(2)}`}
               valueColor="text-status-error"
             />
             <StatItem
-              icon={<Activity className="w-5 h-5 text-text-secondary" />}
+              icon={<Activity className="w-4 h-4 text-text-secondary" />}
+              iconBg="bg-surface-card-alt"
               label="Total de Trades"
               value={metrics.totalTrades.toString()}
             />

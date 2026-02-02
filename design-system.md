@@ -1,6 +1,15 @@
-# Design System — DAO Activity Dashboard
+# Design System — Visor Crypto Dashboard
 
 > Source of truth para geração de código. Usar CSS custom properties ou Tailwind config abaixo.
+
+## Quick Reference
+
+| Padrão | Use quando |
+|--------|------------|
+| **Standard** | Landing pages, formulários, telas com pouca densidade |
+| **Compact/Dense UI** | Dashboards, tabelas de dados, telas de métricas (Custos, Portfolio) |
+
+Veja seção **Compact Layout Guidelines** para padrões de alta densidade.
 
 ---
 
@@ -270,13 +279,22 @@ bg: accent-red | text: #FFFFFF | radius: radius-md
 bg: transparent | text: text-primary | border: 1px solid border-strong | radius: radius-md
 ```
 
-### Card
+### Card — Standard
 
 ```
 bg: surface-card | border: 1px solid border-default
 radius: radius-xl | padding: 24px | gap interno: 16px
 — variante ticker strip —
 bg: surface-card-alt | radius: radius-2xl | padding: 16px 20px
+```
+
+### Card — Compact (Dense UI)
+
+```
+bg: surface-card | border: 1px solid border-default
+radius: radius-lg | padding: 12px (p-3) ou 16px (p-4)
+gap interno: 8px-12px
+uso: grids de métricas, dashboards densos, tabelas
 ```
 
 ### Search Input
@@ -357,6 +375,154 @@ left indicator: 3px wide | bg accent-purple | radius: full
 sizes: 16px (inline), 20px (sidebar/actions), 24px (header)
 color: text-muted → hover: text-secondary → active: action-primary
 style: outlined/stroke (Lucide)
+— compact —
+sizes: 14px (inline/badges), 16px (cards), 20px (navigation)
+```
+
+### Chart Heights
+
+```
+— dashboard overview —
+h-[350px] | h-[400px] para charts principais
+
+— compact / dense UI —
+h-[180px] | h-[200px] para grids de charts
+h-[120px] para mini-charts (sparklines, donuts)
+
+— full width charts —
+h-[300px] | h-[350px]
+```
+
+---
+
+## Compact Layout Guidelines (Dense UI)
+
+Padrões para telas com alta densidade de informação (ex: Custos, Dashboard). 
+Mais sofisticado, menos espaçamento, maior aproveitamento da tela.
+
+### Padding Scale (Compact)
+
+| Elemento | Padrão | Compact | Uso |
+|----------|--------|---------|-----|
+| Card | `p-6` (24px) | `p-3` ou `p-4` (12-16px) | Cards de métricas, containers |
+| Card interno | `p-5` (20px) | `p-3` (12px) | Sub-cards, células |
+| Table row | `py-3 px-4` | `py-2 px-3` | Linhas de tabela densas |
+| Badge/Chip | `px-2.5 py-0.5` | `px-2 py-0.5` | Badges inline |
+| Button | `px-4 py-2` | `px-3 py-1.5` | Botões de ação secundária |
+| Icon container | `w-10 h-10` | `w-8 h-8` | Ícones em cards |
+
+### Typography Scale (Compact)
+
+| Elemento | Padrão | Compact | Uso |
+|----------|--------|---------|-----|
+| Page title | `text-2xl` | `text-xl` | Títulos de página |
+| Section title | `text-lg` | `text-sm` | Subtítulos, headers de card |
+| Card value | `text-3xl` | `text-lg` | Valores principais |
+| Body text | `text-base` | `text-sm` | Textos descritivos |
+| Label/Meta | `text-sm` | `text-xs` | Legendas, subtítulos |
+| Table cell | `text-base` | `text-xs` | Células de tabela |
+| Badge text | `text-xs` | `text-xs` | (mantém) |
+
+### Component Specs — Compact
+
+#### Compact Metric Card
+
+```
+container: bg surface-card | border 1px border-default | radius radius-lg
+padding: 12px (p-3)
+icon: w-8 h-8 | bg surface-card-alt | rounded-lg
+title: text-xs text-text-secondary
+value: text-lg font-mono font-bold | color por status
+subtitle: text-xs text-text-muted
+```
+
+#### Dense Table
+
+```
+container: bg surface-card | border 1px border-default | overflow-hidden
+header: bg surface-card-alt/50 | py-2 px-3 | text-xs font-medium text-text-secondary
+row: border-b border-border-default/50 | py-2 px-3 | hover:bg-surface-card-alt/30
+cell: text-xs | mono para valores
+highlight row: bg-status-success-muted/20 ou bg-status-error-muted/20
+```
+
+#### Compact Tab Selector
+
+```
+container: bg-surface-card-alt | border border-border-default | h-9 | radius-md
+tab: text-xs | data-[state=active]:bg-action-primary data-[state=active]:text-white
+padding: px-3 py-1.5
+```
+
+#### Compact Chart
+
+```
+height: 180-200px (vs 300-350px padrão)
+margin: { top: 10, right: 10, left: 0, bottom: 0 }
+axis font: 11px
+grid: strokeDasharray="3 3" | vertical={false}
+tooltip: p-2 | text-xs
+```
+
+#### Grid Layouts Compactos
+
+```
+// Cards de métricas
+grid-cols-2 lg:grid-cols-4 gap-3
+
+// Cards de conteúdo
+grid-cols-1 lg:grid-cols-3 gap-3
+
+// Tabela + sidebar
+grid-cols-1 lg:grid-cols-3 gap-3
+// table: lg:col-span-2
+```
+
+### Color Coding (Status)
+
+```
+// Cards com status
+FAVORÁVEL (recebendo): border-status-success/30 bg-status-success-muted/20
+DESFAVORÁVEL (pagando): border-status-error/30 bg-status-error-muted/20
+WARNING: border-yellow-500/30 bg-yellow-500/10
+```
+
+### Spacing Scale (Compact)
+
+```css
+/* Use gap-3 (12px) ao invés de gap-4 (16px) ou gap-6 (24px) */
+space-y-3    /* vs space-y-4 ou space-y-6 */
+space-x-2    /* para elementos inline */
+
+/* Section spacing */
+space-y-4    /* vs space-y-6 entre seções */
+```
+
+### Exemplo Prático — Cards de Métricas
+
+```tsx
+// ANTES (padrão)
+<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+  <Card className="p-6">
+    <div className="w-10 h-10 ...">
+      <Icon className="w-5 h-5" />
+    </div>
+    <h3 className="text-lg font-semibold">Título</h3>
+    <p className="text-3xl font-bold">$1,234.56</p>
+  </Card>
+</div>
+
+// DEPOIS (compact)
+<div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+  <Card className="p-3">
+    <div className="w-8 h-8 ...">
+      <Icon className="w-4 h-4" />
+    </div>
+    <p className="text-xs text-text-secondary">Título</p>
+    <p className="text-lg font-bold font-mono">$1,234.56</p>
+    <p className="text-xs text-text-muted">subtítulo</p>
+  </Card>
+</div>
 ```
 
 ---
