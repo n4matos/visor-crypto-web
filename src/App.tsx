@@ -3,12 +3,13 @@ import type { View } from '@/types';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
+import { usePortfolio } from '@/hooks';
+import { PortfolioDrawer } from '@/components/PortfolioDrawer';
 import {
   PortfolioView,
   CustosView,
   HistoricoView,
   PosicoesView,
-  ConfiguracoesView,
   AuthView,
   LandingView,
   OnboardingView,
@@ -19,29 +20,22 @@ import {
   Receipt,
   History,
   Wallet,
-  Settings,
   LogOut,
   Menu,
   X,
   ChevronLeft,
   ChevronRight,
-  CheckCircle2,
   AlertCircle,
-  Clock,
   Sun,
   Moon,
   RefreshCw,
 } from 'lucide-react';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
-const TOKEN_KEY = 'visor_jwt';
 
 const PAGE_TITLES: Record<View, string> = {
   portfolio: 'Portfolio',
   custos: 'Custos de Trading',
   historico: 'Historico de Trades',
   posicoes: 'Posicoes Abertas',
-  configuracoes: 'Configuracoes',
   auth: 'Autenticacao',
   landing: 'Inicio',
   onboarding: 'Boas Vindas',
@@ -60,144 +54,18 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'historico', label: 'Historico', icon: History },
 ];
 
-interface ConnectionStatus {
-  connected: boolean;
-  exchange: string;
-  lastSync: string | null;
-  apiKey: string | null;
-}
-
 export default function App() {
   const [currentView, setCurrentView] = useState<View>('portfolio');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
-    connected: false,
-    exchange: 'Bybit',
-    lastSync: null,
-    apiKey: null,
-  });
-  const [connectionLoading, setConnectionLoading] = useState(true);
+
+  const { portfolios, activePortfolioId, isLoading: portfolioLoading, refreshPortfolios } = usePortfolio();
   const { theme, toggleTheme } = useTheme();
-  const { isAuthenticated, isLoading: authLoading, login, register, logout, error, clearError } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, login, register, logout, error, clearError } = useAuth();
 
-  // Fetch connection status from API
-  useEffect(() => {
-    const fetchConnectionStatus = async () => {
-      const token = localStorage.getItem(TOKEN_KEY);
-      if (!token) {
-        setConnectionLoading(false);
-        return;
-      }
-
-      try {
-        // Fetch user data to check if has credentials
-        const userResponse = await fetch(`${API_BASE_URL}/users/me`, {
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
-
-          // Check multiple possible field names from backend
-          const hasCredentials = userData.data?.has_bybit_credentials ||
-            userData.data?.bybit_configured ||
-            userData.data?.has_credentials;
-          const lastSync = userData.data?.last_sync_at;
-
-          // Consider connected if has credentials (same logic as ConfiguracoesView)
-          const isConnected = !!(hasCredentials || lastSync);
-
-          // Fetch credentials to get masked API key
-          let apiKey = null;
-          if (hasCredentials) {
-            const credResponse = await fetch(`${API_BASE_URL}/users/bybit-credentials`, {
-              headers: { 'Authorization': `Bearer ${token}` },
-            });
-            if (credResponse.ok) {
-              const credData = await credResponse.json();
-              apiKey = credData.data?.api_key;
-            }
-          }
-
-          setConnectionStatus({
-            connected: isConnected,
-            exchange: 'Bybit',
-            lastSync: lastSync,
-            apiKey: apiKey,
-          });
-        }
-      } catch (err) {
-        console.error('Failed to fetch connection status:', err);
-      } finally {
-        setConnectionLoading(false);
-      }
-    };
-
-    // Reset loading state when auth changes
-    setConnectionLoading(true);
-    
-    // Fetch immediately and whenever auth state changes
-    fetchConnectionStatus();
-
-    // Poll every 30 seconds
-    // Store interval ID to clear it later if needed, though cleanup handles it
-    const interval = setInterval(fetchConnectionStatus, 30000);
-    return () => clearInterval(interval);
-  }, [isAuthenticated]);
-
-  // Expose fetchConnectionStatus as a lightweight callback for children
-  const refreshConnection = useCallback(async (options?: { credentialsRemoved?: boolean }) => {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) return;
-
-    try {
-      const userResponse = await fetch(`${API_BASE_URL}/users/me`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
-        const hasCredentials = userData.data?.has_bybit_credentials ||
-          userData.data?.bybit_configured ||
-          userData.data?.has_credentials;
-        const lastSync = userData.data?.last_sync_at;
-        const isConnected = !!(hasCredentials || lastSync);
-
-        let apiKey = null;
-        if (hasCredentials) {
-          const credResponse = await fetch(`${API_BASE_URL}/users/bybit-credentials`, {
-            headers: { 'Authorization': `Bearer ${token}` },
-          });
-          if (credResponse.ok) {
-            const credData = await credResponse.json();
-            apiKey = credData.data?.api_key;
-          }
-        }
-
-        setConnectionStatus({
-          connected: isConnected,
-          exchange: 'Bybit',
-          lastSync: lastSync,
-          apiKey: apiKey,
-        });
-
-        // Redirect to onboarding if credentials were removed
-        if (options?.credentialsRemoved) {
-          setCurrentView('onboarding');
-          return;
-        }
-
-        // Redirect to onboarding if no credentials and not already there
-        // Also allow staying in configuracoes view to re-add credentials
-        if (!isConnected && currentView !== 'onboarding' && currentView !== 'configuracoes') {
-          setCurrentView('onboarding');
-        }
-      }
-    } catch (err) {
-      console.error('Failed to refresh connection status:', err);
-    }
-  }, [currentView]);
+  const connected = portfolios.length > 0 || !!user?.has_bybit_credentials;
+  const activePortfolio = portfolios.find(p => p.id === activePortfolioId) || portfolios[0];
+  const lastSync = activePortfolio?.last_sync_at || null;
 
   const [currentTime, setCurrentTime] = useState(() => Date.now());
 
@@ -206,75 +74,38 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Redirect to onboarding when credentials are removed
+  const timeAgo = useMemo(() => {
+    if (!lastSync) return null;
+    const lastSyncDate = new Date(lastSync);
+    return Math.floor((currentTime - lastSyncDate.getTime()) / 60000);
+  }, [currentTime, lastSync]);
+
+  // Redirect to onboarding if authenticated but not connected
   useEffect(() => {
-    // Only redirect after connection status has been checked (not during initial loading)
-    if (isAuthenticated && !connectionStatus.connected && !authLoading && !connectionLoading) {
-      // Only redirect if user is in a view that requires connection
-      // Allow configuracoes view so user can re-add credentials
-      const viewsRequiringConnection: View[] = ['portfolio', 'custos', 'historico', 'posicoes'];
-      if (viewsRequiringConnection.includes(currentView)) {
+    if (isAuthenticated && !authLoading && !portfolioLoading) {
+      if (!connected && currentView !== 'onboarding') {
         setCurrentView('onboarding');
       }
     }
-  }, [connectionStatus.connected, isAuthenticated, authLoading, currentView, connectionLoading]);
-
-  const timeAgo = useMemo(() => {
-    if (!connectionStatus.lastSync) return null;
-    const lastSync = new Date(connectionStatus.lastSync);
-    return Math.floor((currentTime - lastSync.getTime()) / 60000);
-  }, [currentTime, connectionStatus.lastSync]);
+  }, [isAuthenticated, authLoading, portfolioLoading, connected, currentView]);
 
   const handleLogin = useCallback(async (email: string, password: string): Promise<boolean> => {
     const success = await login({ email, password });
     if (success) {
-      const token = localStorage.getItem(TOKEN_KEY);
-      if (token) {
-        try {
-          const userResponse = await fetch(`${API_BASE_URL}/users/me`, {
-            headers: { 'Authorization': `Bearer ${token}` },
-          });
-
-          if (userResponse.ok) {
-            const userData = await userResponse.json();
-            const hasCredentials = userData.data?.has_bybit_credentials ||
-              userData.data?.bybit_configured ||
-              userData.data?.has_credentials;
-            const lastSync = userData.data?.last_sync_at;
-            const isConfigured = !!(hasCredentials || lastSync);
-
-            if (isConfigured) {
-              // Set connection status directly to prevent race with effects
-              setConnectionStatus({
-                connected: true,
-                exchange: 'Bybit',
-                lastSync: lastSync,
-                apiKey: null,
-              });
-              setConnectionLoading(false);
-              setCurrentView('portfolio');
-            } else {
-              setCurrentView('onboarding');
-            }
-            return true;
-          }
-        } catch (err) {
-          console.error('Failed to fetch user after login:', err);
-        }
-      }
+      await refreshPortfolios();
       setCurrentView('portfolio');
     }
     return success;
-  }, [login]);
+  }, [login, refreshPortfolios]);
 
   const handleRegister = useCallback(async (email: string, password: string): Promise<boolean> => {
     const success = await register({ email, password });
     if (success) {
-      // New users don't have credentials, redirect to onboarding
       setCurrentView('onboarding');
+      await refreshPortfolios();
     }
     return success;
-  }, [register]);
+  }, [register, refreshPortfolios]);
 
   const handleLogout = useCallback(() => {
     logout();
@@ -283,12 +114,11 @@ export default function App() {
 
   const renderView = () => {
     switch (currentView) {
-      case 'portfolio': return <PortfolioView connected={connectionStatus.connected} />;
+      case 'portfolio': return <PortfolioView />;
       case 'custos': return <CustosView />;
       case 'historico': return <HistoricoView />;
-      case 'posicoes': return <PosicoesView connected={connectionStatus.connected} />;
-      case 'configuracoes': return <ConfiguracoesView onConfigChange={refreshConnection} />;
-      default: return <PortfolioView connected={connectionStatus.connected} />;
+      case 'posicoes': return <PosicoesView />;
+      default: return <PortfolioView />;
     }
   };
 
@@ -297,7 +127,6 @@ export default function App() {
     setMobileMenuOpen(false);
   };
 
-  // Show loading state while checking auth
   if (authLoading) {
     return (
       <div className="min-h-screen bg-surface-page flex items-center justify-center">
@@ -309,7 +138,6 @@ export default function App() {
     );
   }
 
-  // Show Auth/Landing view if not authenticated
   if (!isAuthenticated) {
     if (currentView === 'auth') {
       return (
@@ -332,7 +160,6 @@ export default function App() {
     );
   }
 
-  // Handle Onboarding View (No Sidebar/Header layout)
   if (currentView === 'onboarding') {
     return (
       <div className="min-h-screen bg-surface-page flex flex-col">
@@ -342,14 +169,14 @@ export default function App() {
           onThemeToggle={toggleTheme}
           timeAgo={null}
           onMobileMenuOpen={() => { }}
-          connected={false}
-          exchange="Bybit"
           onLogout={handleLogout}
+          connected={connected}
+          displayLabel="Boas Vindas"
         />
         <div className="flex-1 flex items-center justify-center p-4">
           <OnboardingView
-            onComplete={() => {
-              refreshConnection();
+            onComplete={async () => {
+              await refreshPortfolios();
               setCurrentView('portfolio');
             }}
           />
@@ -368,10 +195,8 @@ export default function App() {
         />
       )}
 
-      {/* Mobile Header */}
       <MobileHeader onMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} isOpen={mobileMenuOpen} />
 
-      {/* Sidebar */}
       <Sidebar
         currentView={currentView}
         onNavClick={handleNavClick}
@@ -381,23 +206,24 @@ export default function App() {
         onLogout={handleLogout}
       />
 
-      {/* Main Content */}
       <main className={cn(
         "transition-all duration-300 ease-out min-h-screen",
         sidebarCollapsed ? "lg:ml-20" : "lg:ml-64"
       )}>
-        {/* Header */}
         <Header
           title={PAGE_TITLES[currentView]}
           theme={theme}
           onThemeToggle={toggleTheme}
           timeAgo={timeAgo}
           onMobileMenuOpen={() => setMobileMenuOpen(true)}
-          connected={connectionStatus.connected}
-          exchange={connectionStatus.exchange}
+          connected={connected}
+          displayLabel={
+            activePortfolioId === null && connected
+              ? 'Todos os Ativos'
+              : (activePortfolioId ? (portfolios.find(p => p.id === activePortfolioId)?.label || portfolios[0]?.label) : 'Desconectado')
+          }
         />
 
-        {/* Page Content */}
         <div className="p-4 lg:p-6 pt-20 lg:pt-6">
           <div className="max-w-7xl mx-auto">{renderView()}</div>
         </div>
@@ -439,14 +265,33 @@ interface SidebarProps {
 }
 
 function Sidebar({ currentView, onNavClick, collapsed, onCollapseToggle, mobileOpen, onLogout }: SidebarProps) {
+  // Access portfolio context here
+  const { portfolios, activePortfolioId } = usePortfolio();
+
+  const connected = portfolios.length > 0;
+  // Determine display info
+  let displayName = 'Sem Conexão';
+  let exchangeCode = 'NC'; // Not Connected
+
+  if (activePortfolioId === null && connected) {
+    displayName = 'Todos os Ativos';
+    exchangeCode = 'ALL';
+  } else if (activePortfolioId) {
+    const active = portfolios.find(p => p.id === activePortfolioId);
+    if (active) {
+      displayName = active.label || active.exchange;
+      exchangeCode = active.exchange.substring(0, 2).toUpperCase();
+    }
+  }
+
   return (
     <aside className={cn(
-      "fixed left-0 top-0 h-screen bg-surface-sidebar border-r border-border-default z-50 transition-all duration-300 ease-out",
+      "fixed left-0 top-0 h-screen bg-surface-sidebar border-r border-border-default z-50 transition-all duration-300 ease-out flex flex-col",
       collapsed ? "w-20" : "w-64",
       mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
     )}>
       {/* Logo */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-border-default">
+      <div className="h-16 flex items-center justify-between px-4 border-b border-border-default flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-action-primary flex items-center justify-center flex-shrink-0">
             <TrendingUp className="w-5 h-5 text-white" />
@@ -459,7 +304,43 @@ function Sidebar({ currentView, onNavClick, collapsed, onCollapseToggle, mobileO
       </div>
 
       {/* Navigation */}
-      <nav className="p-3 space-y-1">
+      <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
+        {/* Portfolio Selector in Sidebar */}
+        <div className="mb-4">
+          <PortfolioDrawer>
+            <button className={cn(
+              "w-full flex items-center gap-3 p-2 rounded-xl border border-border-default/40 bg-surface-card hover:bg-surface-card-alt hover:border-border-default transition-all duration-200 group text-left",
+              collapsed ? "justify-center px-0 bg-transparent border-transparent" : "px-3"
+            )}>
+              <div className={cn(
+                "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
+                connected ? "bg-surface-sidebar border border-border shadow-sm" : "bg-status-error/10"
+              )}>
+                {connected ? (
+                  activePortfolioId === null ? <Wallet className="w-5 h-5 text-action-primary" /> : <span className="text-xs font-bold text-text-secondary">{exchangeCode}</span>
+                ) : (
+                  <AlertCircle className="w-5 h-5 text-status-error" />
+                )}
+              </div>
+
+              {!collapsed && (
+                <div className="flex-1 min-w-0">
+                  <span className="block text-sm font-semibold text-text-primary truncate">
+                    {displayName}
+                  </span>
+                  <span className="flex items-center gap-1 text-xs text-text-muted group-hover:text-text-secondary transition-colors truncate">
+                    {connected ? 'Trocar carteira' : 'Conectar agora'}
+                    <ChevronRight className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </span>
+                </div>
+              )}
+            </button>
+          </PortfolioDrawer>
+        </div>
+
+        {/* Divider */}
+        <div className="h-px bg-border-default mx-2 my-2" />
+
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = currentView === item.id;
@@ -481,16 +362,9 @@ function Sidebar({ currentView, onNavClick, collapsed, onCollapseToggle, mobileO
 
       {/* Footer Actions */}
       <div className={cn(
-        "absolute bottom-0 left-0 right-0 p-3 border-t border-border-default",
+        "p-3 border-t border-border-default flex-shrink-0",
         collapsed ? "space-y-2" : "space-y-1"
       )}>
-        <NavButton
-          icon={<Settings className="w-5 h-5 flex-shrink-0" />}
-          label="Configurações"
-          isActive={currentView === 'configuracoes'}
-          collapsed={collapsed}
-          onClick={() => onNavClick('configuracoes')}
-        />
         <NavButton
           icon={<LogOut className="w-5 h-5 flex-shrink-0" />}
           label="Sair"
@@ -543,12 +417,13 @@ interface HeaderProps {
   onThemeToggle: () => void;
   timeAgo: number | null;
   onMobileMenuOpen: () => void;
-  connected: boolean;
-  exchange: string;
   onLogout?: () => void;
+  // Props for simple status display
+  connected: boolean;
+  displayLabel: string;
 }
 
-function Header({ title, theme, onThemeToggle, timeAgo, onMobileMenuOpen, connected, exchange, onLogout }: HeaderProps) {
+function Header({ title, theme, onThemeToggle, onMobileMenuOpen, onLogout, connected, displayLabel }: HeaderProps) {
   return (
     <header className="h-16 bg-surface-sidebar/80 backdrop-blur-md border-b border-border-default flex items-center justify-between px-4 lg:px-6 sticky top-0 z-20">
       <div className="flex items-center gap-4">
@@ -558,7 +433,22 @@ function Header({ title, theme, onThemeToggle, timeAgo, onMobileMenuOpen, connec
         <h1 className="text-xl font-semibold text-text-primary">{title}</h1>
       </div>
       <div className="flex items-center gap-4">
-        <ConnectionStatus timeAgo={timeAgo} connected={connected} exchange={exchange} />
+        {/* Connection status simplified for header since selector is in sidebar */}
+        <div className="hidden md:flex items-center text-sm">
+          {connected ? (
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-surface-card-alt border border-border-default/50" title={`Conectado: ${displayLabel}`}>
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500 shadow-[0_0_10px_rgba(74,222,128,0.7)]"></span>
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-surface-card-alt border border-border-default/50" title="Desconectado">
+              <span className="w-2.5 h-2.5 rounded-full bg-status-error opacity-80" />
+            </div>
+          )}
+        </div>
+
         <Button
           variant="ghost"
           size="icon"
@@ -584,34 +474,5 @@ function Header({ title, theme, onThemeToggle, timeAgo, onMobileMenuOpen, connec
         )}
       </div>
     </header>
-  );
-}
-
-// Connection Status Component
-interface ConnectionStatusProps {
-  timeAgo: number | null;
-  connected: boolean;
-  exchange: string;
-}
-
-function ConnectionStatus({ timeAgo, connected, exchange }: ConnectionStatusProps) {
-  return (
-    <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-card-alt border border-border-default">
-      {connected ? (
-        <>
-          <CheckCircle2 className="w-4 h-4 text-status-success" />
-          <span className="text-sm text-text-secondary">{exchange}</span>
-          <span className="text-xs text-text-muted flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            {timeAgo === null ? 'nunca' : timeAgo < 1 ? 'agora' : `${timeAgo}m`}
-          </span>
-        </>
-      ) : (
-        <>
-          <AlertCircle className="w-4 h-4 text-status-error" />
-          <span className="text-sm text-text-secondary">Desconectado</span>
-        </>
-      )}
-    </div>
   );
 }
