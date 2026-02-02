@@ -16,6 +16,7 @@ interface User {
   is_active: boolean;
   last_sync_at: string | null;
   created_at: string;
+  has_bybit_credentials?: boolean;
 }
 
 interface LoginCredentials {

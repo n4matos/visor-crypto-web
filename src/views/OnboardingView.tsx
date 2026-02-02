@@ -47,14 +47,35 @@ export function OnboardingView({ onComplete }: OnboardingViewProps) {
             const token = getToken();
             if (!token) throw new Error('Sessão expirada. Faça login novamente.');
 
-            // 1. Save Credentials
-            const saveResponse = await fetch(`${API_BASE_URL}/users/bybit-credentials`, {
-                method: 'PUT',
+            // 1. Test Connection first (without saving)
+            const testResponse = await fetch(`${API_BASE_URL}/credentials/test`, {
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
                 },
                 body: JSON.stringify({
+                    exchange: 'Bybit',
+                    api_key: apiKey,
+                    secret: apiSecret,
+                }),
+            });
+
+            if (!testResponse.ok) {
+                const testData = await testResponse.json().catch(() => null);
+                throw new Error(testData?.error || 'Falha na conexão com a Bybit. Verifique suas chaves.');
+            }
+
+            // 2. Save Credentials (using new multi-account API)
+            const saveResponse = await fetch(`${API_BASE_URL}/credentials`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    label: 'Principal', // Default label for the first account
+                    exchange: 'Bybit',
                     api_key: apiKey,
                     secret: apiSecret,
                 }),
@@ -62,20 +83,7 @@ export function OnboardingView({ onComplete }: OnboardingViewProps) {
 
             if (!saveResponse.ok) {
                 const data = await saveResponse.json().catch(() => null);
-                throw new Error(data?.message || 'Falha ao salvar credenciais.');
-            }
-
-            // 2. Test Connection (Validate keys)
-            const testResponse = await fetch(`${API_BASE_URL}/users/test-bybit-connection`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-            });
-
-            if (!testResponse.ok) {
-                const testData = await testResponse.json().catch(() => null);
-                throw new Error(testData?.message || 'Credenciais salvas, mas a conexão falhou. Verifique as chaves.');
+                throw new Error(data?.error || 'Falha ao salvar credenciais.');
             }
 
             // Success

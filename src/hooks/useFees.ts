@@ -14,7 +14,7 @@ interface UseFeesReturn {
   fees: FeesSummary | null;
   isLoading: boolean;
   error: string | null;
-  fetchFees: () => Promise<void>;
+  fetchFees: (credentialId?: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -25,7 +25,7 @@ export function useFees(): UseFeesReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchFees = useCallback(async () => {
+  const fetchFees = useCallback(async (credentialId?: string) => {
     const token = getToken();
     if (!token) {
       setError('Não autenticado');
@@ -36,7 +36,10 @@ export function useFees(): UseFeesReturn {
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/fees/summary`, {
+      const url = new URL(`${API_BASE_URL}/fees/summary`);
+      if (credentialId) url.searchParams.append('credential_id', credentialId);
+
+      const response = await fetch(url.toString(), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
 

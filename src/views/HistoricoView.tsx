@@ -13,7 +13,10 @@ type TypeFilter = 'ALL' | 'TRADE' | 'SETTLEMENT' | 'FEE' | 'TRANSFER';
 
 const MAX_TRADES_DISPLAY = 50;
 
+import { usePortfolio } from '@/contexts/PortfolioContext';
+
 export function HistoricoView() {
+  const { activePortfolioId } = usePortfolio();
   const [searchQuery, setSearchQuery] = useState('');
   const [directionFilter, setDirectionFilter] = useState<DirectionFilter>('ALL');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('ALL');
@@ -21,8 +24,10 @@ export function HistoricoView() {
   const { transactions, isLoading, error, fetchTransactions } = useTransactions();
 
   useEffect(() => {
-    fetchTransactions({ limit: 100 });
-  }, [fetchTransactions]);
+    if (activePortfolioId) {
+      fetchTransactions({ limit: 100 }, activePortfolioId);
+    }
+  }, [fetchTransactions, activePortfolioId]);
 
   const filteredTrades = useMemo(() => {
     return transactions.filter(trade => {
@@ -38,7 +43,7 @@ export function HistoricoView() {
   }
 
   if (error) {
-    return <ViewError error={error} onRetry={() => fetchTransactions({ limit: 100 })} />;
+    return <ViewError error={error} onRetry={() => activePortfolioId && fetchTransactions({ limit: 100 }, activePortfolioId)} />;
   }
 
   return (

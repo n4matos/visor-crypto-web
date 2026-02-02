@@ -53,7 +53,7 @@ interface UseDashboardReturn {
   performance: PerformanceMetrics | null;
   isLoading: boolean;
   error: string | null;
-  fetchDashboardData: (period?: Period) => Promise<void>;
+  fetchDashboardData: (period?: Period, credentialId?: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -66,7 +66,7 @@ export function useDashboard(): UseDashboardReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchDashboardData = useCallback(async (period: Period = 'all') => {
+  const fetchDashboardData = useCallback(async (period: Period = 'all', credentialId?: string) => {
     const token = getToken();
     if (!token) {
       setError('Não autenticado');
@@ -78,12 +78,19 @@ export function useDashboard(): UseDashboardReturn {
 
     try {
       const headers = { 'Authorization': `Bearer ${token}` };
-      
+
+      const getUrl = (path: string, params: Record<string, string> = {}) => {
+        const url = new URL(`${API_BASE_URL}${path}`);
+        if (credentialId) url.searchParams.append('credential_id', credentialId);
+        Object.entries(params).forEach(([k, v]) => url.searchParams.append(k, v));
+        return url.toString();
+      };
+
       // Fetch all three endpoints in parallel
       const [summaryRes, equityRes, performanceRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/dashboard/summary`, { headers }),
-        fetch(`${API_BASE_URL}/dashboard/equity-curve?period=${period}`, { headers }),
-        fetch(`${API_BASE_URL}/dashboard/performance?period=${period}`, { headers }),
+        fetch(getUrl('/dashboard/summary'), { headers }),
+        fetch(getUrl('/dashboard/equity-curve', { period }), { headers }),
+        fetch(getUrl('/dashboard/performance', { period }), { headers }),
       ]);
 
       // Check for auth errors

@@ -23,19 +23,18 @@ import {
   ComposedChart,
 } from 'recharts';
 
-interface PortfolioViewProps {
-  connected: boolean;
-}
+import { usePortfolio } from '@/contexts/PortfolioContext';
 
-export function PortfolioView({ connected }: PortfolioViewProps) {
+export function PortfolioView() {
+  const { activePortfolioId } = usePortfolio();
   const [period, setPeriod] = useState<Period>('90d');
   const { summary, equityCurve, performance, isLoading, error, fetchDashboardData } = useDashboard();
 
   useEffect(() => {
-    if (connected) {
-      fetchDashboardData(period);
+    if (activePortfolioId) {
+      fetchDashboardData(period, activePortfolioId);
     }
-  }, [period, fetchDashboardData, connected]);
+  }, [period, fetchDashboardData, activePortfolioId]);
 
   // Calculate returns from equity curve
   const { usdReturn, btcReturn, usdReturnAbs, firstPoint, lastPoint } = useMemo(() => {
@@ -77,12 +76,12 @@ export function PortfolioView({ connected }: PortfolioViewProps) {
     totalTrades: performance?.totalTrades || 0,
   }), [performance]);
 
-  if (!connected) {
+  if (!activePortfolioId) {
     return (
       <ViewEmpty
         icon={<Wallet className="w-8 h-8 text-text-muted" />}
-        title="Conecte sua conta"
-        description="Para visualizar seus dados, voce precisa configurar suas credenciais da Bybit."
+        title="Selecione uma Carteira"
+        description="Selecione uma carteira no menu lateral ou adicione uma nova em Configurações."
       />
     );
   }
@@ -92,7 +91,7 @@ export function PortfolioView({ connected }: PortfolioViewProps) {
   }
 
   if (error) {
-    return <ViewError error={error} onRetry={() => fetchDashboardData(period)} />;
+    return <ViewError error={error} onRetry={() => fetchDashboardData(period, activePortfolioId)} />;
   }
 
   const hasData = equityCurve && equityCurve.points.length > 0;
@@ -107,7 +106,7 @@ export function PortfolioView({ connected }: PortfolioViewProps) {
           icon={<TrendingUp className="w-8 h-8 text-text-muted" />}
           title="Sem dados disponiveis"
           description="Nao encontramos dados historicos para o periodo selecionado. Certifique-se de ter sincronizado seus dados da Bybit em Configuracoes."
-          action={{ label: 'Atualizar dados', onClick: () => fetchDashboardData(period), isLoading }}
+          action={{ label: 'Atualizar dados', onClick: () => fetchDashboardData(period, activePortfolioId), isLoading }}
         />
       </div>
     );

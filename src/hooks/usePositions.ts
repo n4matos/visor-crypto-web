@@ -33,7 +33,7 @@ interface UsePositionsReturn {
   summary: PositionsSummary | null;
   isLoading: boolean;
   error: string | null;
-  fetchPositions: () => Promise<void>;
+  fetchPositions: (credentialId?: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -45,7 +45,7 @@ export function usePositions(): UsePositionsReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchPositions = useCallback(async () => {
+  const fetchPositions = useCallback(async (credentialId?: string) => {
     const token = getToken();
     if (!token) {
       setError('Não autenticado');
@@ -57,10 +57,16 @@ export function usePositions(): UsePositionsReturn {
 
     try {
       const headers = { 'Authorization': `Bearer ${token}` };
-      
+
+      const getUrl = (path: string) => {
+        const url = new URL(`${API_BASE_URL}${path}`);
+        if (credentialId) url.searchParams.append('credential_id', credentialId);
+        return url.toString();
+      };
+
       const [positionsRes, summaryRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/positions`, { headers }),
-        fetch(`${API_BASE_URL}/positions/summary`, { headers }),
+        fetch(getUrl('/positions'), { headers }),
+        fetch(getUrl('/positions/summary'), { headers }),
       ]);
 
       if (positionsRes.status === 401 || summaryRes.status === 401) {

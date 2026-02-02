@@ -16,7 +16,7 @@ interface UseFundingReturn {
   funding: FundingSummary[];
   isLoading: boolean;
   error: string | null;
-  fetchFunding: () => Promise<void>;
+  fetchFunding: (credentialId?: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -27,7 +27,7 @@ export function useFunding(): UseFundingReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchFunding = useCallback(async () => {
+  const fetchFunding = useCallback(async (credentialId?: string) => {
     const token = getToken();
     if (!token) {
       setError('Não autenticado');
@@ -38,7 +38,10 @@ export function useFunding(): UseFundingReturn {
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/funding/summary`, {
+      const url = new URL(`${API_BASE_URL}/funding/summary`);
+      if (credentialId) url.searchParams.append('credential_id', credentialId);
+
+      const response = await fetch(url.toString(), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
 

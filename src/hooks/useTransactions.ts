@@ -40,8 +40,8 @@ interface UseTransactionsReturn {
   summary: TransactionSummary | null;
   isLoading: boolean;
   error: string | null;
-  fetchTransactions: (params?: { limit?: number; offset?: number; symbol?: string; type?: string }) => Promise<void>;
-  fetchSummary: (period?: Period) => Promise<void>;
+  fetchTransactions: (params?: { limit?: number; offset?: number; symbol?: string; type?: string }, credentialId?: string) => Promise<void>;
+  fetchSummary: (period?: Period, credentialId?: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -53,7 +53,7 @@ export function useTransactions(): UseTransactionsReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchTransactions = useCallback(async (params: { limit?: number; offset?: number; symbol?: string; type?: string } = {}) => {
+  const fetchTransactions = useCallback(async (params: { limit?: number; offset?: number; symbol?: string; type?: string } = {}, credentialId?: string) => {
     const token = getToken();
     if (!token) {
       setError('Não autenticado');
@@ -69,6 +69,7 @@ export function useTransactions(): UseTransactionsReturn {
       if (params.offset) queryParams.set('offset', params.offset.toString());
       if (params.symbol) queryParams.set('symbol', params.symbol);
       if (params.type) queryParams.set('type', params.type);
+      if (credentialId) queryParams.set('credential_id', credentialId);
 
       const url = `${API_BASE_URL}/transactions?${queryParams.toString()}`;
       const response = await fetch(url, {
@@ -91,7 +92,7 @@ export function useTransactions(): UseTransactionsReturn {
     }
   }, []);
 
-  const fetchSummary = useCallback(async (period: Period = '30d') => {
+  const fetchSummary = useCallback(async (period: Period = '30d', credentialId?: string) => {
     const token = getToken();
     if (!token) return;
 
@@ -99,7 +100,11 @@ export function useTransactions(): UseTransactionsReturn {
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/transactions/summary?period=${period}`, {
+      const url = new URL(`${API_BASE_URL}/transactions/summary`);
+      url.searchParams.append('period', period);
+      if (credentialId) url.searchParams.append('credential_id', credentialId);
+
+      const response = await fetch(url.toString(), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
 

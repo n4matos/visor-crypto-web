@@ -8,20 +8,19 @@ import { PositionCard } from '@/components/cards';
 import { ViewLoading, ViewError, ViewEmpty, PageHeader, StatItem } from '@/components/shared';
 import { usePositions } from '@/hooks';
 
-interface PosicoesViewProps {
-  connected: boolean;
-}
+import { usePortfolio } from '@/contexts/PortfolioContext';
 
-export function PosicoesView({ connected }: PosicoesViewProps) {
+export function PosicoesView() {
+  const { activePortfolioId } = usePortfolio();
   const { positions, summary, isLoading, error, fetchPositions } = usePositions();
 
   useEffect(() => {
-    if (connected) {
-      fetchPositions();
-      const interval = setInterval(fetchPositions, 30000);
+    if (activePortfolioId) {
+      fetchPositions(activePortfolioId);
+      const interval = setInterval(() => fetchPositions(activePortfolioId), 30000);
       return () => clearInterval(interval);
     }
-  }, [fetchPositions, connected]);
+  }, [fetchPositions, activePortfolioId]);
 
   const stats = useMemo(() => {
     const totalPnl = positions.reduce((acc, pos) => acc + parseFloat(pos.unrealized_pnl), 0);
@@ -33,22 +32,22 @@ export function PosicoesView({ connected }: PosicoesViewProps) {
     return { totalPnl, totalMargin, longCount, shortCount, totalFunding };
   }, [positions, summary]);
 
-  if (!connected) {
+  if (!activePortfolioId) {
     return (
       <ViewEmpty
         icon={<Wallet className="w-8 h-8 text-text-muted" />}
-        title="Conecte sua conta"
-        description="Para visualizar suas posicoes, voce precisa configurar suas credenciais da Bybit."
+        title="Selecione uma Carteira"
+        description="Selecione uma carteira para ver suas posições."
       />
     );
   }
 
-  if (connected && isLoading && positions.length === 0) {
+  if (activePortfolioId && isLoading && positions.length === 0) {
     return <ViewLoading message="Carregando posicoes..." />;
   }
 
   if (error) {
-    return <ViewError error={error} onRetry={fetchPositions} />;
+    return <ViewError error={error} onRetry={() => fetchPositions(activePortfolioId)} />;
   }
 
   return (
@@ -119,7 +118,7 @@ export function PosicoesView({ connected }: PosicoesViewProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={fetchPositions}
+            onClick={() => fetchPositions(activePortfolioId)}
             disabled={isLoading}
             className="text-text-secondary hover:text-text-primary"
           >

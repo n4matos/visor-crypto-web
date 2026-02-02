@@ -42,17 +42,22 @@ const getPeriodLabel = (period: Period): string => {
   }
 };
 
+import { usePortfolio } from '@/contexts/PortfolioContext';
+
 export function CustosView() {
+  const { activePortfolioId } = usePortfolio();
   const [period, setPeriod] = useState<Period>('30d');
   const { funding, isLoading: fundingLoading, error: fundingError, fetchFunding } = useFunding();
   const { fees, isLoading: feesLoading, error: feesError, fetchFees } = useFees();
   const { summary: txSummary, isLoading: txLoading, error: txError, fetchSummary } = useTransactions();
 
   useEffect(() => {
-    fetchFunding();
-    fetchFees();
-    fetchSummary(period);
-  }, [fetchFunding, fetchFees, fetchSummary, period]);
+    if (activePortfolioId) {
+      fetchFunding(activePortfolioId);
+      fetchFees(activePortfolioId);
+      fetchSummary(period, activePortfolioId);
+    }
+  }, [fetchFunding, fetchFees, fetchSummary, period, activePortfolioId]);
 
   const isLoading = fundingLoading || feesLoading || txLoading;
   const error = fundingError || feesError || txError;
@@ -142,7 +147,13 @@ export function CustosView() {
   }
 
   if (error) {
-    return <ViewError error={error} onRetry={() => { fetchFunding(); fetchFees(); fetchSummary(period); }} />;
+    return <ViewError error={error} onRetry={() => {
+      if (activePortfolioId) {
+        fetchFunding(activePortfolioId);
+        fetchFees(activePortfolioId);
+        fetchSummary(period, activePortfolioId);
+      }
+    }} />;
   }
 
   return (
