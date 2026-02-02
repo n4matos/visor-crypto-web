@@ -1,10 +1,11 @@
 import { useEffect, useMemo } from 'react';
-import { Wallet, TrendingUp, TrendingDown, Clock, Loader2, AlertCircle } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Clock, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { PositionCard } from '@/components/cards';
+import { ViewLoading, ViewError, ViewEmpty, PageHeader, StatItem } from '@/components/shared';
 import { usePositions } from '@/hooks';
 
 interface PosicoesViewProps {
@@ -14,7 +15,6 @@ interface PosicoesViewProps {
 export function PosicoesView({ connected }: PosicoesViewProps) {
   const { positions, summary, isLoading, error, fetchPositions } = usePositions();
 
-  // Fetch positions on component mount and auto-refresh
   useEffect(() => {
     if (connected) {
       fetchPositions();
@@ -30,95 +30,73 @@ export function PosicoesView({ connected }: PosicoesViewProps) {
     const shortCount = summary?.short_count || positions.filter(p => p.side === 'SHORT').length;
     const totalFunding = positions.reduce((acc, pos) => acc + parseFloat(pos.funding_rate || '0'), 0);
 
-    return {
-      totalPnl,
-      totalMargin,
-      longCount,
-      shortCount,
-      totalFunding,
-    };
+    return { totalPnl, totalMargin, longCount, shortCount, totalFunding };
   }, [positions, summary]);
-
-  const isViewLoading = connected && isLoading;
-
-  if (isViewLoading && positions.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 space-y-4">
-        <Loader2 className="w-8 h-8 animate-spin text-action-primary" />
-        <p className="text-text-secondary">Carregando posições...</p>
-      </div>
-    );
-  }
 
   if (!connected) {
     return (
-      <div className="flex flex-col items-center justify-center h-96 space-y-4">
-        <div className="w-16 h-16 rounded-full bg-surface-card-alt flex items-center justify-center">
-          <Wallet className="w-8 h-8 text-text-muted" />
-        </div>
-        <h3 className="text-lg font-semibold text-text-primary">Conecte sua conta</h3>
-        <p className="text-text-secondary max-w-md text-center">
-          Para visualizar suas posições, você precisa configurar suas credenciais da Bybit.
-        </p>
-      </div>
+      <ViewEmpty
+        icon={<Wallet className="w-8 h-8 text-text-muted" />}
+        title="Conecte sua conta"
+        description="Para visualizar suas posicoes, voce precisa configurar suas credenciais da Bybit."
+      />
     );
   }
 
+  if (connected && isLoading && positions.length === 0) {
+    return <ViewLoading message="Carregando posicoes..." />;
+  }
+
   if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 space-y-4">
-        <div className="flex items-center gap-2 text-status-error">
-          <AlertCircle className="w-6 h-6" />
-          <span>{error}</span>
-        </div>
-        <Button onClick={fetchPositions} variant="outline" className="border-border-default">
-          Tentar novamente
-        </Button>
-      </div>
-    );
+    return <ViewError error={error} onRetry={fetchPositions} />;
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-text-primary">Posições Abertas</h1>
-        <p className="text-text-secondary">Acompanhe suas posições em tempo real</p>
-      </div>
+      <PageHeader title="Posicoes Abertas" subtitle="Acompanhe suas posicoes em tempo real" />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
+        <StatItem
+          layout="compact"
           icon={<Wallet className="w-5 h-5 text-action-primary" />}
-          bgColor="bg-action-primary-muted"
-          label="PnL Não-Realizado"
+          iconBg="bg-action-primary-muted"
+          label="PnL Nao-Realizado"
           value={`${stats.totalPnl >= 0 ? '+' : ''}$${stats.totalPnl.toFixed(2)}`}
           valueColor={stats.totalPnl >= 0 ? 'text-status-success' : 'text-status-error'}
         />
-        <StatCard
+        <StatItem
+          layout="compact"
           icon={<span className="text-lg font-bold text-text-primary">$</span>}
-          bgColor="bg-surface-card-alt"
+          iconBg="bg-surface-card-alt"
           label="Margem Total"
           value={`$${stats.totalMargin.toFixed(2)}`}
         />
-        <StatCard
+        <StatItem
+          layout="compact"
           icon={<TrendingUp className="w-5 h-5 text-status-success" />}
-          bgColor="bg-status-success-muted"
-          label="Posições Long"
+          iconBg="bg-status-success-muted"
+          label="Posicoes Long"
           value={stats.longCount.toString()}
           valueColor="text-status-success"
         />
-        <StatCard
+        <StatItem
+          layout="compact"
           icon={<TrendingDown className="w-5 h-5 text-status-error" />}
-          bgColor="bg-status-error-muted"
-          label="Posições Short"
+          iconBg="bg-status-error-muted"
+          label="Posicoes Short"
           value={stats.shortCount.toString()}
           valueColor="text-status-error"
         />
       </div>
 
-      <Card className={cn("p-4 border transition-all duration-200", stats.totalFunding >= 0 ? "border-status-success/30 bg-status-success-muted/20" : "border-status-error/30 bg-status-error-muted/20")}>
+      <Card className={cn("p-4 border transition-all duration-200",
+        stats.totalFunding >= 0 ? "border-status-success/30 bg-status-success-muted/20" : "border-status-error/30 bg-status-error-muted/20"
+      )}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", stats.totalFunding >= 0 ? "bg-status-success/20" : "bg-status-error/20")}>
+            <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center",
+              stats.totalFunding >= 0 ? "bg-status-success/20" : "bg-status-error/20"
+            )}>
               <Clock className={cn("w-5 h-5", stats.totalFunding >= 0 ? "text-status-success" : "text-status-error")} />
             </div>
             <div>
@@ -137,7 +115,7 @@ export function PosicoesView({ connected }: PosicoesViewProps) {
 
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-text-primary">Detalhes das Posições</h2>
+          <h2 className="text-lg font-semibold text-text-primary">Detalhes das Posicoes</h2>
           <Button
             variant="ghost"
             size="sm"
@@ -152,7 +130,7 @@ export function PosicoesView({ connected }: PosicoesViewProps) {
 
         {positions.length === 0 ? (
           <Card className="p-8 border border-border-default bg-surface-card text-center">
-            <p className="text-text-secondary">Nenhuma posição aberta no momento.</p>
+            <p className="text-text-secondary">Nenhuma posicao aberta no momento.</p>
           </Card>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -180,29 +158,5 @@ export function PosicoesView({ connected }: PosicoesViewProps) {
         )}
       </div>
     </div>
-  );
-}
-
-interface StatCardProps {
-  icon: React.ReactNode;
-  bgColor: string;
-  label: string;
-  value: string;
-  valueColor?: string;
-}
-
-function StatCard({ icon, bgColor, label, value, valueColor = 'text-text-primary' }: StatCardProps) {
-  return (
-    <Card className="p-4 border border-border-default bg-surface-card">
-      <div className="flex items-center gap-3">
-        <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", bgColor)}>
-          {icon}
-        </div>
-        <div>
-          <span className="text-xs text-text-secondary uppercase">{label}</span>
-          <p className={cn("text-xl font-bold font-mono", valueColor)}>{value}</p>
-        </div>
-      </div>
-    </Card>
   );
 }

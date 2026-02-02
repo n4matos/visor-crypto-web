@@ -6,6 +6,17 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
@@ -284,8 +295,6 @@ export function ConfiguracoesView({ onConfigChange }: ConfiguracoesViewProps) {
   };
 
   const handleDeleteCredentials = async () => {
-    if (!confirm('Tem certeza que deseja remover as credenciais da Bybit?')) return;
-
     try {
       const token = getToken();
       const response = await fetch(`${API_BASE_URL}/users/bybit-credentials`, {
@@ -392,15 +401,37 @@ export function ConfiguracoesView({ onConfigChange }: ConfiguracoesViewProps) {
           </div>
           <div className="flex items-center gap-2">
             {isConfigured && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleDeleteCredentials}
-                className="text-text-muted hover:text-status-error"
-                title="Remover credenciais"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-text-muted hover:text-status-error"
+                    title="Remover credenciais"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-surface-card border-border-default">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="text-text-primary">Remover credenciais</AlertDialogTitle>
+                    <AlertDialogDescription className="text-text-secondary">
+                      Tem certeza que deseja remover as credenciais da Bybit? Seus dados historicos serao mantidos, mas novas sincronizacoes nao serao possiveis ate configurar novas credenciais.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel className="border-border-default hover:bg-surface-card-alt">
+                      Cancelar
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteCredentials}
+                      className="bg-destructive text-white hover:bg-destructive/90"
+                    >
+                      Remover
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
             <Badge
               variant={isConfigured ? 'default' : 'destructive'}

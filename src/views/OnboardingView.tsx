@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CheckCircle2, ArrowRight, ShieldCheck, RefreshCw, AlertCircle, Eye, EyeOff, LayoutTemplate } from 'lucide-react';
+import { CheckCircle2, ArrowRight, ShieldCheck, RefreshCw, AlertCircle, Eye, EyeOff, LayoutTemplate, Lock, BookOpen, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -123,7 +123,7 @@ export function OnboardingView({ onComplete }: OnboardingViewProps) {
         <div className="min-h-screen bg-surface-page flex flex-col items-center justify-center p-4">
 
             {/* Container with max-width */}
-            <div className="w-full max-w-2xl animate-fade-in-up">
+            <div className={cn("w-full animate-fade-in-up", step === 'credentials' ? "max-w-4xl" : "max-w-2xl")}>
 
                 {/* Header / Steps Indicator */}
                 <div className="mb-8 text-center">
@@ -198,71 +198,152 @@ export function OnboardingView({ onComplete }: OnboardingViewProps) {
 
                         {/* Step 2: Credentials */}
                         {step === 'credentials' && (
-                            <div className="space-y-6">
-                                <div className="bg-action-primary/5 border border-action-primary/20 rounded-lg p-4 flex gap-3">
-                                    <ShieldCheck className="w-5 h-5 text-action-primary shrink-0 mt-0.5" />
-                                    <div className="text-sm">
-                                        <p className="text-text-primary font-medium mb-1">Segurança em primeiro lugar</p>
-                                        <p className="text-text-secondary">Suas chaves são criptografadas (AES-256). Necessário apenas permissão de <strong>Leitura (Read-Only)</strong>.</p>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <div>
-                                        <Label htmlFor="apiKey" className="text-text-secondary">API Key</Label>
-                                        <Input
-                                            id="apiKey"
-                                            value={apiKey}
-                                            onChange={(e) => setApiKey(e.target.value)}
-                                            placeholder="Copie sua API Key da Bybit"
-                                            className="bg-surface-input border-border-default h-12 mt-1.5 focus:border-action-primary"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="apiSecret" className="text-text-secondary">API Secret</Label>
-                                        <div className="relative mt-1.5">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                {/* Left: Form + Trust Badges */}
+                                <div className="space-y-6">
+                                    <div className="space-y-4">
+                                        <div>
+                                            <Label htmlFor="apiKey" className="text-text-secondary">API Key</Label>
                                             <Input
-                                                id="apiSecret"
-                                                type={showSecret ? 'text' : 'password'}
-                                                value={apiSecret}
-                                                onChange={(e) => setApiSecret(e.target.value)}
-                                                placeholder="Copie seu API Secret"
-                                                className="bg-surface-input border-border-default h-12 pr-10 focus:border-action-primary"
+                                                id="apiKey"
+                                                value={apiKey}
+                                                onChange={(e) => setApiKey(e.target.value)}
+                                                placeholder="Copie sua API Key da Bybit"
+                                                className="bg-surface-input border-border-default h-12 mt-1.5 focus:border-action-primary"
                                             />
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowSecret(!showSecret)}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary"
-                                            >
-                                                {showSecret ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                                            </button>
+                                        </div>
+
+                                        <div>
+                                            <Label htmlFor="apiSecret" className="text-text-secondary">API Secret</Label>
+                                            <div className="relative mt-1.5">
+                                                <Input
+                                                    id="apiSecret"
+                                                    type={showSecret ? 'text' : 'password'}
+                                                    value={apiSecret}
+                                                    onChange={(e) => setApiSecret(e.target.value)}
+                                                    placeholder="Copie seu API Secret"
+                                                    className="bg-surface-input border-border-default h-12 pr-10 focus:border-action-primary"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowSecret(!showSecret)}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary"
+                                                >
+                                                    {showSecret ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {error && (
+                                        <div className="flex items-center gap-2 text-status-error text-sm p-3 bg-status-error/10 rounded-md">
+                                            <AlertCircle className="w-4 h-4" />
+                                            {error}
+                                        </div>
+                                    )}
+
+                                    <div className="flex items-center gap-3">
+                                        <Button variant="outline" onClick={() => setStep('exchange')} className="h-12 border-border-default">
+                                            Voltar
+                                        </Button>
+                                        <Button
+                                            onClick={handleCredentialsSubmit}
+                                            disabled={isSubmitting}
+                                            className="flex-1 h-12 bg-action-primary hover:bg-action-primary-hover text-white font-medium shadow-glow"
+                                        >
+                                            {isSubmitting ? (
+                                                <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Conectando...</>
+                                            ) : (
+                                                <>Conectar Exchange <ArrowRight className="w-4 h-4 ml-2" /></>
+                                            )}
+                                        </Button>
+                                    </div>
+
+                                    {/* Trust Badges */}
+                                    <div className="space-y-3 pt-2">
+                                        <div className="flex items-start gap-3 p-3 rounded-lg bg-surface-card-alt/50">
+                                            <div className="w-8 h-8 rounded-lg bg-action-primary/10 flex items-center justify-center shrink-0">
+                                                <Lock className="w-4 h-4 text-action-primary" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-medium text-text-primary">Conexao Segura</p>
+                                                <p className="text-xs text-text-secondary">Todos os dados sao trafegados por conexao criptografada. Suas chaves sao armazenadas com criptografia AES-256.</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-3 p-3 rounded-lg bg-surface-card-alt/50">
+                                            <div className="w-8 h-8 rounded-lg bg-action-primary/10 flex items-center justify-center shrink-0">
+                                                <Eye className="w-4 h-4 text-action-primary" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-medium text-text-primary">Acesso Somente Leitura</p>
+                                                <p className="text-xs text-text-secondary">A integracao possui acesso somente leitura e nao pode realizar alteracoes na sua conta ou movimentar fundos.</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-3 p-3 rounded-lg bg-surface-card-alt/50">
+                                            <div className="w-8 h-8 rounded-lg bg-action-primary/10 flex items-center justify-center shrink-0">
+                                                <Settings2 className="w-4 h-4 text-action-primary" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-medium text-text-primary">Permissoes Controladas</p>
+                                                <p className="text-xs text-text-secondary">Voce tem o controle. Pode revisar e revogar o acesso a qualquer momento nas configuracoes da sua conta.</p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {error && (
-                                    <div className="flex items-center gap-2 text-status-error text-sm p-3 bg-status-error/10 rounded-md">
-                                        <AlertCircle className="w-4 h-4" />
-                                        {error}
+                                {/* Right: Step-by-Step Instructions */}
+                                <div className="lg:border-l lg:border-border-default lg:pl-8">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <BookOpen className="w-5 h-5 text-action-primary" />
+                                        <h3 className="text-base font-semibold text-text-primary">Passo a Passo</h3>
                                     </div>
-                                )}
-
-                                <div className="flex items-center gap-3 pt-4">
-                                    <Button variant="outline" onClick={() => setStep('exchange')} className="h-12 border-border-default">
-                                        Voltar
-                                    </Button>
-                                    <Button
-                                        onClick={handleCredentialsSubmit}
-                                        disabled={isSubmitting}
-                                        className="flex-1 h-12 bg-action-primary hover:bg-action-primary-hover text-white font-medium shadow-glow"
-                                    >
-                                        {isSubmitting ? (
-                                            <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Conectando...</>
-                                        ) : (
-                                            <>Conectar Exchange <ArrowRight className="w-4 h-4 ml-2" /></>
-                                        )}
-                                    </Button>
+                                    <ol className="space-y-3 text-sm text-text-secondary">
+                                        <li className="flex gap-3">
+                                            <span className="w-6 h-6 rounded-full bg-action-primary/10 text-action-primary text-xs font-semibold flex items-center justify-center shrink-0">1</span>
+                                            <span>Faca login na sua conta <strong className="text-text-primary">Bybit</strong></span>
+                                        </li>
+                                        <li className="flex gap-3">
+                                            <span className="w-6 h-6 rounded-full bg-action-primary/10 text-action-primary text-xs font-semibold flex items-center justify-center shrink-0">2</span>
+                                            <span>Abra o menu do perfil e clique em <strong className="text-text-primary">API</strong></span>
+                                        </li>
+                                        <li className="flex gap-3">
+                                            <span className="w-6 h-6 rounded-full bg-action-primary/10 text-action-primary text-xs font-semibold flex items-center justify-center shrink-0">3</span>
+                                            <span>Clique em <strong className="text-text-primary">Criar Nova Chave</strong></span>
+                                        </li>
+                                        <li className="flex gap-3">
+                                            <span className="w-6 h-6 rounded-full bg-action-primary/10 text-action-primary text-xs font-semibold flex items-center justify-center shrink-0">4</span>
+                                            <span>Selecione <strong className="text-text-primary">System-generated API Keys</strong></span>
+                                        </li>
+                                        <li className="flex gap-3">
+                                            <span className="w-6 h-6 rounded-full bg-action-primary/10 text-action-primary text-xs font-semibold flex items-center justify-center shrink-0">5</span>
+                                            <span>Ative a verificacao 2FA se necessario</span>
+                                        </li>
+                                        <li className="flex gap-3">
+                                            <span className="w-6 h-6 rounded-full bg-action-primary/10 text-action-primary text-xs font-semibold flex items-center justify-center shrink-0">6</span>
+                                            <span>Nomeie a chave (ex: <strong className="text-text-primary">Visor Crypto</strong>)</span>
+                                        </li>
+                                        <li className="flex gap-3">
+                                            <span className="w-6 h-6 rounded-full bg-action-primary/10 text-action-primary text-xs font-semibold flex items-center justify-center shrink-0">7</span>
+                                            <span>Habilite <strong className="text-text-primary">Read-Only</strong> e <strong className="text-text-primary">No IP Restriction</strong></span>
+                                        </li>
+                                        <li className="flex gap-3">
+                                            <span className="w-6 h-6 rounded-full bg-action-primary/10 text-action-primary text-xs font-semibold flex items-center justify-center shrink-0">8</span>
+                                            <span>Habilite <strong className="text-text-primary">Unified Trading</strong> com permissao de <strong className="text-text-primary">Assets</strong> e clique em Enviar</span>
+                                        </li>
+                                        <li className="flex gap-3">
+                                            <span className="w-6 h-6 rounded-full bg-action-primary/10 text-action-primary text-xs font-semibold flex items-center justify-center shrink-0">9</span>
+                                            <span>Complete a verificacao de seguranca (2FA + e-mail)</span>
+                                        </li>
+                                        <li className="flex gap-3">
+                                            <span className="w-6 h-6 rounded-full bg-action-primary/10 text-action-primary text-xs font-semibold flex items-center justify-center shrink-0">10</span>
+                                            <span>Copie a <strong className="text-text-primary">API Key</strong> e o <strong className="text-text-primary">Secret</strong> e cole nos campos ao lado</span>
+                                        </li>
+                                    </ol>
+                                    <div className="mt-5 p-3 rounded-lg bg-status-warning/5 border border-status-warning/20">
+                                        <p className="text-xs text-text-secondary">
+                                            <strong className="text-status-warning">Nota:</strong> A API Key expira em 3 meses se criada sem restricao de IP. Se a senha da sua conta Bybit for alterada, o Secret sera valido por no maximo 7 dias.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         )}

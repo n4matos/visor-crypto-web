@@ -4,10 +4,8 @@ import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  DashboardView,
-  CurvasView,
-  FundingView,
-  TaxasView,
+  PortfolioView,
+  CustosView,
   HistoricoView,
   PosicoesView,
   ConfiguracoesView,
@@ -18,8 +16,6 @@ import {
 import { cn } from '@/lib/utils';
 import {
   TrendingUp,
-  LayoutDashboard,
-  DollarSign,
   Receipt,
   History,
   Wallet,
@@ -41,15 +37,13 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080
 const TOKEN_KEY = 'visor_jwt';
 
 const PAGE_TITLES: Record<View, string> = {
-  dashboard: 'Dashboard',
-  curvas: 'Curvas de Crescimento',
-  funding: 'Funding Rate',
-  taxas: 'Taxas',
-  historico: 'Histórico de Trades',
-  posicoes: 'Posições Abertas',
-  configuracoes: 'Configurações',
-  auth: 'Autenticação',
-  landing: 'Início',
+  portfolio: 'Portfolio',
+  custos: 'Custos de Trading',
+  historico: 'Historico de Trades',
+  posicoes: 'Posicoes Abertas',
+  configuracoes: 'Configuracoes',
+  auth: 'Autenticacao',
+  landing: 'Inicio',
   onboarding: 'Boas Vindas',
 };
 
@@ -60,12 +54,10 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'curvas', label: 'Curvas de Crescimento', icon: TrendingUp },
-  { id: 'funding', label: 'Funding Rate', icon: DollarSign },
-  { id: 'taxas', label: 'Taxas', icon: Receipt },
-  { id: 'historico', label: 'Histórico', icon: History },
-  { id: 'posicoes', label: 'Posições', icon: Wallet },
+  { id: 'portfolio', label: 'Portfolio', icon: TrendingUp },
+  { id: 'custos', label: 'Custos', icon: Receipt },
+  { id: 'posicoes', label: 'Posicoes', icon: Wallet },
+  { id: 'historico', label: 'Historico', icon: History },
 ];
 
 interface ConnectionStatus {
@@ -76,7 +68,7 @@ interface ConnectionStatus {
 }
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<View>('dashboard');
+  const [currentView, setCurrentView] = useState<View>('portfolio');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
@@ -134,13 +126,6 @@ export default function App() {
             lastSync: lastSync,
             apiKey: apiKey,
           });
-
-          // Redirect to onboarding if authenticated but not connected
-          // We only do this check on initial load (or when auth changes) to prevent 
-          // interrupting user if they disconnect manually later (though manual disconnect handles its own flow)
-          if (!isConnected && isAuthenticated) {
-            setCurrentView('onboarding');
-          }
         }
       } catch (err) {
         console.error('Failed to fetch connection status:', err);
@@ -227,7 +212,7 @@ export default function App() {
     if (isAuthenticated && !connectionStatus.connected && !authLoading && !connectionLoading) {
       // Only redirect if user is in a view that requires connection
       // Allow configuracoes view so user can re-add credentials
-      const viewsRequiringConnection: View[] = ['dashboard', 'curvas', 'funding', 'taxas', 'historico', 'posicoes'];
+      const viewsRequiringConnection: View[] = ['portfolio', 'custos', 'historico', 'posicoes'];
       if (viewsRequiringConnection.includes(currentView)) {
         setCurrentView('onboarding');
       }
@@ -243,22 +228,31 @@ export default function App() {
   const handleLogin = useCallback(async (email: string, password: string): Promise<boolean> => {
     const success = await login({ email, password });
     if (success) {
-      // Check if user has Bybit credentials to determine where to redirect
       const token = localStorage.getItem(TOKEN_KEY);
       if (token) {
         try {
           const userResponse = await fetch(`${API_BASE_URL}/users/me`, {
             headers: { 'Authorization': `Bearer ${token}` },
           });
-          
+
           if (userResponse.ok) {
             const userData = await userResponse.json();
             const hasCredentials = userData.data?.has_bybit_credentials ||
               userData.data?.bybit_configured ||
               userData.data?.has_credentials;
-            
-            if (hasCredentials) {
-              setCurrentView('dashboard');
+            const lastSync = userData.data?.last_sync_at;
+            const isConfigured = !!(hasCredentials || lastSync);
+
+            if (isConfigured) {
+              // Set connection status directly to prevent race with effects
+              setConnectionStatus({
+                connected: true,
+                exchange: 'Bybit',
+                lastSync: lastSync,
+                apiKey: null,
+              });
+              setConnectionLoading(false);
+              setCurrentView('portfolio');
             } else {
               setCurrentView('onboarding');
             }
@@ -268,8 +262,7 @@ export default function App() {
           console.error('Failed to fetch user after login:', err);
         }
       }
-      // Fallback to dashboard if we can't determine credentials status
-      setCurrentView('dashboard');
+      setCurrentView('portfolio');
     }
     return success;
   }, [login]);
@@ -290,14 +283,12 @@ export default function App() {
 
   const renderView = () => {
     switch (currentView) {
-      case 'dashboard': return <DashboardView connected={connectionStatus.connected} />;
-      case 'curvas': return <CurvasView />;
-      case 'funding': return <FundingView />;
-      case 'taxas': return <TaxasView />;
+      case 'portfolio': return <PortfolioView connected={connectionStatus.connected} />;
+      case 'custos': return <CustosView />;
       case 'historico': return <HistoricoView />;
       case 'posicoes': return <PosicoesView connected={connectionStatus.connected} />;
       case 'configuracoes': return <ConfiguracoesView onConfigChange={refreshConnection} />;
-      default: return <DashboardView connected={connectionStatus.connected} />;
+      default: return <PortfolioView connected={connectionStatus.connected} />;
     }
   };
 
@@ -359,7 +350,7 @@ export default function App() {
           <OnboardingView
             onComplete={() => {
               refreshConnection();
-              setCurrentView('dashboard');
+              setCurrentView('portfolio');
             }}
           />
         </div>
