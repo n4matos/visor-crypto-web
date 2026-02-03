@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { ViewLoading, ViewError, ViewEmpty } from '@/components/shared';
 import { useDashboard, useWallet } from '@/hooks';
 import { usePortfolio } from '@/contexts/PortfolioContext';
+import { SyncButton } from '@/components/SyncButton';
 import type { Period, WalletAsset } from '@/types';
 import {
   Line,
@@ -63,9 +64,9 @@ function formatPercentage(value: number): string {
 // Asset Table Row component - 5 columns
 function AssetTableRow({ asset, index }: { asset: WalletAsset & { percentage: number }; index: number }) {
   const isPositive = asset.change24h >= 0;
-  
+
   return (
-    <div 
+    <div
       className={cn(
         "grid grid-cols-5 items-center py-3.5 px-4 transition-colors cursor-pointer group",
         "hover:bg-surface-card-alt",
@@ -74,8 +75,8 @@ function AssetTableRow({ asset, index }: { asset: WalletAsset & { percentage: nu
     >
       {/* Column 1: Coin (Icon + Symbol) */}
       <div className="flex items-center gap-3">
-        <img 
-          src={asset.iconUrl} 
+        <img
+          src={asset.iconUrl}
           alt={asset.coin}
           className="w-8 h-8 rounded-full bg-surface-card-alt"
           onError={(e) => {
@@ -125,13 +126,13 @@ function AssetTableRow({ asset, index }: { asset: WalletAsset & { percentage: nu
 }
 
 // Quick Stat Card for side panel
-function QuickStatCard({ 
-  icon, 
-  label, 
-  value, 
-  subvalue, 
-  variant = 'neutral' 
-}: { 
+function QuickStatCard({
+  icon,
+  label,
+  value,
+  subvalue,
+  variant = 'neutral'
+}: {
   icon: React.ReactNode;
   label: string;
   value: string;
@@ -164,24 +165,25 @@ function QuickStatCard({
 }
 
 export function PortfolioView() {
-  const { activePortfolioId } = usePortfolio();
+  const { activePortfolioId, refreshPortfolios, portfolios } = usePortfolio();
+  const activePortfolio = portfolios.find(p => p.id === activePortfolioId);
   const [timeRange, setTimeRange] = useState<TimeRange>('1M');
   const period = TIME_RANGE_TO_PERIOD[timeRange];
-  
-  const { 
-    wallet, 
-    isLoading: isWalletLoading, 
-    error: walletError, 
-    fetchWallet 
+
+  const {
+    wallet,
+    isLoading: isWalletLoading,
+    error: walletError,
+    fetchWallet
   } = useWallet();
-  
-  const { 
-    summary, 
-    equityCurve, 
-    performance, 
-    isLoading: isDashboardLoading, 
-    error: dashboardError, 
-    fetchDashboardData 
+
+  const {
+    summary,
+    equityCurve,
+    performance,
+    isLoading: isDashboardLoading,
+    error: dashboardError,
+    fetchDashboardData
   } = useDashboard();
 
   useEffect(() => {
@@ -233,12 +235,12 @@ export function PortfolioView() {
 
   if (error) {
     return (
-      <ViewError 
-        error={error} 
+      <ViewError
+        error={error}
         onRetry={() => {
           fetchWallet(activePortfolioId);
           fetchDashboardData(period, activePortfolioId);
-        }} 
+        }}
       />
     );
   }
@@ -252,10 +254,10 @@ export function PortfolioView() {
           icon={<TrendingUp className="w-8 h-8 text-text-muted" />}
           title="Sem dados disponíveis"
           description="Não encontramos dados da sua carteira. Certifique-se de ter sincronizado seus dados da Bybit em Configurações."
-          action={{ 
-            label: 'Atualizar dados', 
-            onClick: () => fetchWallet(activePortfolioId), 
-            isLoading 
+          action={{
+            label: 'Atualizar dados',
+            onClick: () => fetchWallet(activePortfolioId),
+            isLoading
           }}
         />
       </div>
@@ -265,11 +267,26 @@ export function PortfolioView() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold text-text-primary">Overview</h1>
-        <p className="text-sm text-text-secondary">
-          Acompanhe o desempenho da sua carteira e seus ativos em tempo real.
-        </p>
+      <div className="flex items-start justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold text-text-primary">Overview</h1>
+          <p className="text-sm text-text-secondary">
+            Acompanhe o desempenho da sua carteira e seus ativos em tempo real.
+          </p>
+        </div>
+
+        <SyncButton
+          lastSyncTime={activePortfolio?.last_sync_at}
+          onSyncComplete={async () => {
+            if (activePortfolioId) {
+              await Promise.all([
+                fetchWallet(activePortfolioId),
+                fetchDashboardData(period, activePortfolioId),
+                refreshPortfolios()
+              ]);
+            }
+          }}
+        />
       </div>
 
       {/* Main Grid */}
@@ -327,8 +344,8 @@ export function PortfolioView() {
                 <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorEquity" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--chart-line-1)" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="var(--chart-line-1)" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="var(--chart-line-1)" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="var(--chart-line-1)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
@@ -388,11 +405,11 @@ export function PortfolioView() {
         </div>
 
         {/* Right Column - Portfolio Insights (1/3) */}
-        <div className="space-y-6">
-          <Card className="p-5 border border-border-default bg-surface-card">
+        <div className="h-full">
+          <Card className="h-full flex flex-col p-5 border border-border-default bg-surface-card">
             <h3 className="text-base font-semibold text-text-primary mb-4">Portfolio Insights</h3>
-            
-            <div className="space-y-3">
+
+            <div className="flex-1 flex flex-col justify-center space-y-4">
               <QuickStatCard
                 icon={<Target className="w-5 h-5" />}
                 label="Taxa de Acerto"
@@ -400,7 +417,7 @@ export function PortfolioView() {
                 subvalue={`${performance?.winningTrades || 0} / ${performance?.totalTrades || 0} trades`}
                 variant={performance?.winRate && performance.winRate > 50 ? 'success' : 'neutral'}
               />
-              
+
               <QuickStatCard
                 icon={<Activity className="w-5 h-5" />}
                 label="Profit Factor"
@@ -408,7 +425,7 @@ export function PortfolioView() {
                 subvalue={performance?.profitFactor && performance.profitFactor > 1.5 ? 'Excelente' : 'Bom'}
                 variant={performance?.profitFactor && performance.profitFactor > 1.5 ? 'success' : 'neutral'}
               />
-              
+
               <QuickStatCard
                 icon={<Zap className="w-5 h-5" />}
                 label="Sharpe Ratio"
@@ -416,7 +433,7 @@ export function PortfolioView() {
                 subvalue="Risco / Retorno"
                 variant={performance?.sharpeRatio && performance.sharpeRatio > 1 ? 'success' : 'neutral'}
               />
-              
+
               <QuickStatCard
                 icon={<TrendingDown className="w-5 h-5" />}
                 label="Max Drawdown"
@@ -441,7 +458,7 @@ export function PortfolioView() {
             </div>
           </div>
         </div>
-        
+
         {/* Table Header */}
         <div className="grid grid-cols-5 items-center py-3 px-4 bg-surface-card-alt/50 text-xs font-medium text-text-muted uppercase tracking-wider">
           <div className="text-left">Asset</div>
@@ -450,7 +467,7 @@ export function PortfolioView() {
           <div className="text-left">Total</div>
           <div className="text-right">24h Change</div>
         </div>
-        
+
         {/* Table Body */}
         <div className="divide-y divide-border-subtle">
           {allocationData.map((asset, index) => (

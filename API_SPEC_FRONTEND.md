@@ -117,9 +117,9 @@ Retorna dados do usuario autenticado.
 
 ---
 
-### `GET /api/v1/users/bybit-credentials`
+### `GET /api/v1/users/bybit-credentials` (Legacy - Deprecated)
 
-Retorna credenciais Bybit mascaradas.
+Retorna credenciais Bybit mascaradas. **Usar `/api/v1/credentials` no lugar.**
 
 **Response 200:**
 ```json
@@ -142,9 +142,9 @@ Retorna credenciais Bybit mascaradas.
 
 ---
 
-### `PUT /api/v1/users/bybit-credentials`
+### `PUT /api/v1/users/bybit-credentials` (Legacy - Deprecated)
 
-Cria ou atualiza credenciais Bybit.
+Cria ou atualiza credenciais Bybit. **Usar `/api/v1/credentials` no lugar.**
 
 **Request Body:**
 ```json
@@ -166,9 +166,9 @@ Cria ou atualiza credenciais Bybit.
 
 ---
 
-### `DELETE /api/v1/users/bybit-credentials`
+### `DELETE /api/v1/users/bybit-credentials` (Legacy - Deprecated)
 
-Remove credenciais Bybit do usuario.
+Remove credenciais Bybit do usuario. **Usar `/api/v1/credentials/:id` no lugar.**
 
 **Response 200:**
 ```json
@@ -182,7 +182,7 @@ Remove credenciais Bybit do usuario.
 
 ---
 
-### `POST /api/v1/users/test-bybit-connection`
+### `POST /api/v1/users/test-bybit-connection` (Legacy - Deprecated)
 
 Testa a conexao com a Bybit usando as credenciais armazenadas.
 
@@ -207,11 +207,253 @@ Testa a conexao com a Bybit usando as credenciais armazenadas.
 
 ---
 
-## 3. Dashboard (Tela Curvas de Crescimento)
+## 3. Credenciais (Multi-Account)
+
+Endpoints para gerenciar multiplas contas Bybit (portfolios).
+
+### `GET /api/v1/credentials`
+
+Lista todas as credenciais do usuario.
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "e2a596ef-d0f2-480d-835f-6a0a21a5e03c",
+      "user_id": "a4bbb02c-94fb-40ea-9053-fd86c445050e",
+      "label": "Principal",
+      "exchange": "Bybit",
+      "api_key": "****SOME",
+      "is_active": true,
+      "last_sync_at": "2026-02-03T14:30:00Z",
+      "total_equity": "12500.50",
+      "created_at": "2026-02-01T10:00:00Z",
+      "updated_at": "2026-02-03T14:30:00Z"
+    },
+    {
+      "id": "59cc57a2-e840-48bc-9e18-604ccf3eeb4c",
+      "user_id": "a4bbb02c-94fb-40ea-9053-fd86c445050e",
+      "label": "Bot Trading",
+      "exchange": "Bybit",
+      "api_key": "****KEY2",
+      "is_active": true,
+      "last_sync_at": null,
+      "total_equity": "0",
+      "created_at": "2026-02-01T11:00:00Z",
+      "updated_at": "2026-02-01T11:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### `POST /api/v1/credentials`
+
+Cria uma nova credencial Bybit.
+
+**Request Body:**
+```json
+{
+  "label": "Minha Conta",
+  "exchange": "Bybit",
+  "api_key": "BYBIT_API_KEY_AQUI",
+  "secret": "BYBIT_API_SECRET_AQUI"
+}
+```
+
+**Response 201:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "user_id": "uuid",
+    "label": "Minha Conta",
+    "exchange": "Bybit",
+    "api_key": "****YHER",
+    "is_active": true,
+    "last_sync_at": null,
+    "total_equity": "0",
+    "created_at": "2026-02-03T10:00:00Z",
+    "updated_at": "2026-02-03T10:00:00Z"
+  }
+}
+```
+
+---
+
+### `GET /api/v1/credentials/:id`
+
+Retorna detalhes de uma credencial especifica.
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "e2a596ef-d0f2-480d-835f-6a0a21a5e03c",
+    "user_id": "a4bbb02c-94fb-40ea-9053-fd86c445050e",
+    "label": "Principal",
+    "exchange": "Bybit",
+    "api_key": "****SOME",
+    "is_active": true,
+    "last_sync_at": "2026-02-03T14:30:00Z",
+    "total_equity": "12500.50",
+    "created_at": "2026-02-01T10:00:00Z",
+    "updated_at": "2026-02-03T14:30:00Z"
+  }
+}
+```
+
+---
+
+### `PUT /api/v1/credentials/:id`
+
+Atualiza uma credencial existente.
+
+**Request Body:**
+```json
+{
+  "label": "Novo Nome",
+  "api_key": "NOVA_API_KEY",
+  "secret": "NOVO_SECRET",
+  "is_active": true
+}
+```
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "e2a596ef-d0f2-480d-835f-6a0a21a5e03c",
+    "label": "Novo Nome",
+    "exchange": "Bybit",
+    "api_key": "****YHER",
+    "is_active": true,
+    "last_sync_at": "2026-02-03T14:30:00Z",
+    "total_equity": "12500.50",
+    "updated_at": "2026-02-03T15:00:00Z"
+  }
+}
+```
+
+---
+
+### `PATCH /api/v1/credentials/:id`
+
+Atualizacao parcial de uma credencial (mesma funcao do PUT, para compatibilidade com frontend).
+
+**Request Body:** (mesmo do PUT)
+
+**Response:** (mesmo do PUT)
+
+---
+
+### `DELETE /api/v1/credentials/:id`
+
+Remove uma credencial. Todas as transacoes associadas serao removidas (CASCADE).
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Credential deleted successfully"
+  }
+}
+```
+
+---
+
+### `POST /api/v1/credentials/:id/test`
+
+Testa a conexao com a Bybit para uma credencial especifica.
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "success": true,
+    "message": "Connection successful",
+    "account_type": "UNIFIED",
+    "total_equity": "12500.50"
+  }
+}
+```
+
+**Response 400 (falha na conexao):**
+```json
+{
+  "success": true,
+  "data": {
+    "success": false,
+    "message": "Invalid API key or secret"
+  }
+}
+```
+
+---
+
+### `POST /api/v1/credentials/test`
+
+Testa credenciais da Bybit **sem salvar** no banco.
+
+**Request Body:**
+```json
+{
+  "api_key": "BYBIT_API_KEY_AQUI",
+  "secret": "BYBIT_API_SECRET_AQUI"
+}
+```
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "success": true,
+    "message": "Connection successful",
+    "account_type": "UNIFIED",
+    "total_equity": "12500.50"
+  }
+}
+```
+
+---
+
+### `POST /api/v1/credentials/:id/sync`
+
+Dispara sincronizacao manual para uma credencial especifica.
+
+**Response 202:**
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Sync started for credential",
+    "credential_id": "e2a596ef-d0f2-480d-835f-6a0a21a5e03c"
+  }
+}
+```
+
+---
+
+## 4. Dashboard (Tela Curvas de Crescimento)
 
 ### `GET /api/v1/dashboard/summary`
 
 Retorna resumo do dashboard para cards principais.
+
+**Query Parameters:**
+
+| Parametro | Tipo | Obrigatorio | Default | Descricao |
+|---|---|---|---|---|
+| `credential_id` | `string` | Nao | - | Filtrar por credencial especifica (UUID) |
 
 **Response 200:**
 ```json
@@ -260,6 +502,7 @@ Retorna dados historicos do patrimonio para plotar graficos (equity curve).
 | Parametro | Tipo | Obrigatorio | Default | Valores |
 |---|---|---|---|---|
 | `period` | `string` | Nao | `all` | `24h`, `7d`, `30d`, `90d`, `1y`, `all` |
+| `credential_id` | `string` | Nao | - | Filtrar por credencial especifica (UUID) |
 
 **Response 200:**
 ```json
@@ -338,6 +581,7 @@ Retorna metricas de performance calculadas a partir do historico de trades.
 | Parametro | Tipo | Obrigatorio | Default | Valores |
 |---|---|---|---|---|
 | `period` | `string` | Nao | `all` | `24h`, `7d`, `30d`, `90d`, `1y`, `all` |
+| `credential_id` | `string` | Nao | - | Filtrar por credencial especifica (UUID) |
 
 **Response 200:**
 ```json
@@ -381,7 +625,7 @@ Retorna metricas de performance calculadas a partir do historico de trades.
 
 ---
 
-## 4. Transacoes
+## 5. Transacoes
 
 ### `GET /api/v1/transactions`
 
@@ -395,6 +639,7 @@ Lista transacoes do usuario com paginacao e filtros.
 | `offset` | `integer` | Nao | `0` | Deslocamento para paginacao |
 | `symbol` | `string` | Nao | - | Filtrar por par (ex: `BTCUSDT`) |
 | `type` | `string` | Nao | - | Filtrar por tipo: `TRADE`, `SETTLEMENT`, `FEE`, `TRANSFER`, `REBATE`, `BONUS` |
+| `credential_id` | `string` | Nao | - | Filtrar por credencial especifica (UUID) |
 
 **Response 200:**
 ```json
@@ -404,6 +649,7 @@ Lista transacoes do usuario com paginacao e filtros.
     {
       "id": "uuid",
       "user_id": "uuid",
+      "credential_id": "e2a596ef-d0f2-480d-835f-6a0a21a5e03c",
       "bybit_id": "bybit-tx-id",
       "symbol": "BTCUSDT",
       "side": "Buy",
@@ -412,6 +658,7 @@ Lista transacoes do usuario com paginacao e filtros.
       "price": "42000.50",
       "fee": "0.042",
       "funding": "0",
+      "cash_flow": "42.0005",
       "currency": "USDT",
       "executed_at": "2026-01-31T14:30:00Z",
       "created_at": "2026-01-31T14:31:00Z"
@@ -425,6 +672,7 @@ Lista transacoes do usuario com paginacao e filtros.
 | Campo | Tipo | Descricao |
 |---|---|---|
 | `id` | `string` (UUID) | ID interno |
+| `credential_id` | `string` (UUID) | ID da credencial (conta) associada |
 | `bybit_id` | `string` | ID original na Bybit |
 | `symbol` | `string` | Par de trading (ex: `BTCUSDT`, `ETHUSDT`) |
 | `side` | `string` | `"Buy"` ou `"Sell"` |
@@ -433,10 +681,11 @@ Lista transacoes do usuario com paginacao e filtros.
 | `price` | `string` | Preco de execucao |
 | `fee` | `string` | Taxa cobrada (positivo = custo) |
 | `funding` | `string` | Funding fee (positivo = recebeu, negativo = pagou) |
+| `cash_flow` | `string` | Fluxo de caixa real (PnL) |
 | `currency` | `string` | Moeda da transacao |
 | `executed_at` | `string` (ISO 8601) | Data/hora de execucao na Bybit |
 
-**Nota:** `qty`, `price`, `fee`, `funding` sao retornados como string para manter a precisao decimal. O frontend deve converter para numero ao exibir.
+**Nota:** `qty`, `price`, `fee`, `funding`, `cash_flow` sao retornados como string para manter a precisao decimal. O frontend deve converter para numero ao exibir.
 
 ---
 
@@ -449,6 +698,7 @@ Retorna estatisticas agregadas de trades.
 | Parametro | Tipo | Obrigatorio | Default | Valores |
 |---|---|---|---|---|
 | `period` | `string` | Nao | `30d` | `24h`, `7d`, `30d`, `90d`, `1y`, `all` |
+| `credential_id` | `string` | Nao | - | Filtrar por credencial especifica (UUID) |
 
 **Response 200:**
 ```json
@@ -473,11 +723,17 @@ Retorna estatisticas agregadas de trades.
 
 ---
 
-## 5. Posicoes
+## 6. Posicoes
 
 ### `GET /api/v1/positions`
 
 Retorna posicoes abertas em tempo real (sincroniza com a Bybit ao chamar).
+
+**Query Parameters:**
+
+| Parametro | Tipo | Obrigatorio | Default | Descricao |
+|---|---|---|---|---|
+| `credential_id` | `string` | Nao | - | Filtrar por credencial especifica (UUID) |
 
 **Response 200:**
 ```json
@@ -487,6 +743,7 @@ Retorna posicoes abertas em tempo real (sincroniza com a Bybit ao chamar).
     {
       "id": "uuid",
       "user_id": "uuid",
+      "credential_id": "e2a596ef-d0f2-480d-835f-6a0a21a5e03c",
       "symbol": "BTCUSDT",
       "side": "LONG",
       "leverage": "10",
@@ -530,6 +787,12 @@ Retorna posicoes abertas em tempo real (sincroniza com a Bybit ao chamar).
 
 Retorna resumo agregado das posicoes abertas.
 
+**Query Parameters:**
+
+| Parametro | Tipo | Obrigatorio | Descricao |
+|---|---|---|---|
+| `credential_id` | `string` | Nao | Filtrar por credencial especifica (UUID) |
+
 **Response 200:**
 ```json
 {
@@ -545,11 +808,17 @@ Retorna resumo agregado das posicoes abertas.
 
 ---
 
-## 6. Funding
+## 7. Funding
 
 ### `GET /api/v1/funding/summary`
 
 Retorna resumo de funding rates por symbol.
+
+**Query Parameters:**
+
+| Parametro | Tipo | Obrigatorio | Descricao |
+|---|---|---|---|
+| `credential_id` | `string` | Nao | Filtrar por credencial especifica (UUID) |
 
 **Response 200:**
 ```json
@@ -558,31 +827,196 @@ Retorna resumo de funding rates por symbol.
   "data": [
     {
       "symbol": "BTCUSDT",
+      "currency": "USDT",
       "today": "-5.20",
       "week": "-32.50",
       "month": "-120.00",
-      "total": "-450.80"
+      "total": "-450.80",
+      "today_usdt": "0",
+      "week_usdt": "0",
+      "month_usdt": "0",
+      "total_usdt": "0"
     },
     {
       "symbol": "ETHUSDT",
+      "currency": "USDT",
       "today": "2.10",
       "week": "15.30",
       "month": "48.00",
-      "total": "180.50"
+      "total": "180.50",
+      "today_usdt": "0",
+      "week_usdt": "0",
+      "month_usdt": "0",
+      "total_usdt": "0"
+    },
+    {
+      "symbol": "BTCUSD",
+      "currency": "BTC",
+      "today": "-0.00000123",
+      "week": "0.00004567",
+      "month": "0.00017890",
+      "total": "0.00052341",
+      "today_usdt": "0",
+      "week_usdt": "0",
+      "month_usdt": "0",
+      "total_usdt": "0"
     }
   ]
 }
 ```
 
-**Nota:** Valores positivos = recebeu funding, negativos = pagou.
+**Notas:**
+- Valores positivos = recebeu funding, negativos = pagou
+- **`currency`**: Indica a moeda em que os valores de funding estão denominados:
+  - Pares terminados em `USDT` (contratos lineares) → `currency: "USDT"`
+  - Pares terminados em `USD` (contratos inversos) → `currency: "BTC"`, `"ETH"`, etc.
+- Os campos `*_usdt` estao reservados para futura conversao automatica
 
 ---
 
-## 7. Fees
+### `GET /api/v1/funding/currencies`
+
+Retorna todas as moedas que tem atividade de funding.
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "currency": "USDT",
+      "total_records": 107,
+      "net_total": "-3.70978198"
+    },
+    {
+      "currency": "BTC",
+      "total_records": 186,
+      "net_total": "0.00070199"
+    },
+    {
+      "currency": "ETH",
+      "total_records": 45,
+      "net_total": "-0.00123456"
+    }
+  ]
+}
+```
+
+**Descricao dos campos:**
+
+| Campo | Tipo | Descricao |
+|---|---|---|
+| `currency` | `string` | Codigo da moeda (USDT, BTC, ETH, etc.) |
+| `total_records` | `integer` | Quantidade de registros de funding |
+| `net_total` | `string` | Total liquido de funding (recebido - pago) |
+
+---
+
+### `GET /api/v1/funding/timeseries`
+
+Retorna time series de funding fee para uma moeda especifica. Ideal para graficos de linha.
+
+**Query Parameters:**
+
+| Parametro | Tipo | Obrigatorio | Default | Descricao |
+|---|---|---|---|---|
+| `currency` | `string` | **Sim** | - | Moeda do funding (ex: `USDT`, `BTC`, `ETH`) |
+| `group_by` | `string` | Nao | `day` | Agrupamento: `day`, `week`, `month` |
+| `start_date` | `string` | Nao | - | Data inicial (formato: `YYYY-MM-DD`) |
+| `end_date` | `string` | Nao | - | Data final (formato: `YYYY-MM-DD`) |
+| `credential_id` | `string` | Nao | - | Filtrar por credencial especifica (UUID) |
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "currency": "USDT",
+    "group_by": "day",
+    "data": [
+      {
+        "date": "2026-02-01T00:00:00Z",
+        "total_funding": "0.01114257",
+        "funding_paid": "-0.46517272",
+        "funding_received": "0.47631529",
+        "transaction_count": 6,
+        "symbols": ["BTCUSDT"]
+      },
+      {
+        "date": "2026-02-02T00:00:00Z",
+        "total_funding": "0.03605848",
+        "funding_paid": "-0.77396376",
+        "funding_received": "0.81002224",
+        "transaction_count": 6,
+        "symbols": ["BTCUSDT"]
+      },
+      {
+        "date": "2026-02-03T00:00:00Z",
+        "total_funding": "0.0036256",
+        "funding_paid": "-0.59022977",
+        "funding_received": "0.59385537",
+        "transaction_count": 4,
+        "symbols": ["BTCUSDT"]
+      }
+    ],
+    "summary": {
+      "total_net": "0.05082665",
+      "total_paid": "-1.82936625",
+      "total_received": "1.8801929",
+      "period_start": "2026-02-01T00:00:00Z",
+      "period_end": "2026-02-03T00:00:00Z"
+    }
+  }
+}
+```
+
+**Descricao dos campos em `data[]`:**
+
+| Campo | Tipo | Descricao |
+|---|---|---|
+| `date` | `string` (ISO 8601) | Data do ponto (dia/semana/mes) |
+| `total_funding` | `string` | Valor liquido (recebido + pago) |
+| `funding_paid` | `string` | Total pago em funding (negativo) |
+| `funding_received` | `string` | Total recebido em funding (positivo) |
+| `transaction_count` | `integer` | Quantidade de transacoes de funding |
+| `symbols` | `string[]` | Lista de pares que tiveram funding |
+
+**Descricao dos campos em `summary`:**
+
+| Campo | Tipo | Descricao |
+|---|---|---|
+| `total_net` | `string` | Total liquido no periodo |
+| `total_paid` | `string` | Total pago no periodo |
+| `total_received` | `string` | Total recebido no periodo |
+| `period_start` | `string` (ISO 8601) | Inicio do periodo |
+| `period_end` | `string` (ISO 8601) | Fim do periodo |
+
+**Dica para grafico:**
+- Use `total_funding` para a linha principal
+- Valores positivos (recebendo) = cor verde
+- Valores negativos (pagando) = cor vermelha
+
+**Response 400 (parametros invalidos):**
+```json
+{
+  "success": false,
+  "error": "Key: 'GetFundingTimeSeriesRequest.Currency' Error:Field validation for 'Currency' failed on the 'required' tag"
+}
+```
+
+---
+
+## 8. Fees
 
 ### `GET /api/v1/fees/summary`
 
 Retorna resumo de fees pagas.
+
+**Query Parameters:**
+
+| Parametro | Tipo | Obrigatorio | Descricao |
+|---|---|---|---|
+| `credential_id` | `string` | Nao | Filtrar por credencial especifica (UUID) |
 
 **Response 200:**
 ```json
@@ -599,11 +1033,75 @@ Retorna resumo de fees pagas.
 
 ---
 
-## 8. Sincronizacao
+## 9. Wallet
+
+### `GET /api/v1/wallet/balances`
+
+Retorna saldos da carteira Bybit.
+
+**Query Parameters:**
+
+| Parametro | Tipo | Obrigatorio | Descricao |
+|---|---|---|---|
+| `credential_id` | `string` | Nao | Filtrar por credencial especifica (UUID) |
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "totalEquity": "12500.50",
+    "totalWalletBalance": "12000.00",
+    "totalMarginBalance": "11800.00",
+    "totalAvailableBalance": "8000.00",
+    "assets": [
+      {
+        "coin": "USDT",
+        "equity": "5000.50",
+        "walletBalance": "4800.00",
+        "availableBalance": "3000.00",
+        "usdValue": "5000.50",
+        "btcValue": "0.125",
+        "unrealisedPnl": "200.50"
+      },
+      {
+        "coin": "BTC",
+        "equity": "0.15",
+        "walletBalance": "0.15",
+        "availableBalance": "0.05",
+        "usdValue": "7500.00",
+        "btcValue": "0.15",
+        "unrealisedPnl": "100.00"
+      }
+    ]
+  }
+}
+```
+
+**Descricao dos campos:**
+
+| Campo | Tipo | Descricao |
+|---|---|---|
+| `totalEquity` | `string` | Patrimonio total em USD |
+| `totalWalletBalance` | `string` | Saldo total da wallet |
+| `totalMarginBalance` | `string` | Saldo disponivel para margem |
+| `totalAvailableBalance` | `string` | Saldo disponivel para trading |
+| `assets` | `array` | Lista de ativos |
+| `assets[].coin` | `string` | Codigo do ativo (USDT, BTC, ETH) |
+| `assets[].equity` | `string` | Equity do ativo |
+| `assets[].walletBalance` | `string` | Saldo na wallet |
+| `assets[].availableBalance` | `string` | Saldo disponivel |
+| `assets[].usdValue` | `string` | Valor em USD |
+| `assets[].btcValue` | `string` | Valor em BTC |
+| `assets[].unrealisedPnl` | `string` | PnL nao realizado |
+
+---
+
+## 10. Sincronizacao
 
 ### `POST /api/v1/sync`
 
-Dispara sincronizacao manual com a Bybit. A sincronizacao roda em background.
+Dispara sincronizacao manual com a Bybit para **todas** as credenciais ativas. A sincronizacao roda em background.
 
 **Response 202:**
 ```json
@@ -693,9 +1191,9 @@ Usado nos query params `?period=`:
 ## Fluxo de Onboarding (ordem recomendada)
 
 1. `POST /auth/register` - Criar conta
-2. `PUT /users/bybit-credentials` - Configurar API keys da Bybit
-3. `POST /users/test-bybit-connection` - Validar conexao
-4. `POST /sync` - Disparar primeira sincronizacao
+2. `POST /credentials` - Configurar API keys da Bybit (multi-account)
+3. `POST /credentials/:id/test` - Validar conexao
+4. `POST /credentials/:id/sync` - Disparar primeira sincronizacao
 5. `GET /sync/status` - Aguardar conclusao (polling)
 6. `GET /dashboard/summary` - Exibir dados
 
@@ -721,3 +1219,26 @@ const [summary, equityCurve, performance] = await Promise.all([
 Ao trocar o filtro de periodo, refazer as chamadas de `equity-curve` e `performance` com o novo `?period=`.
 
 O `summary` nao depende do periodo (sempre retorna valores atuais e fixos: today, week, month).
+
+---
+
+## Multi-Account (Multiplas Contas)
+
+O sistema suporta multiplas credenciais Bybit por usuario (multi-account). Todos os endpoints de dados aceitam o parametro opcional `credential_id`.
+
+### Fluxo recomendado:
+
+1. Buscar credenciais disponiveis:
+```typescript
+const credentials = await fetch('/api/v1/credentials', { headers });
+```
+
+2. Usar o `id` da credencial selecionada em todas as chamadas:
+```typescript
+const summary = await fetch(
+  `/api/v1/dashboard/summary?credential_id=${selectedCredentialId}`, 
+  { headers }
+);
+```
+
+3. Se nao informar `credential_id`, o endpoint retorna dados agregados de **todas** as credenciais ativas.

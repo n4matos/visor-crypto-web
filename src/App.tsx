@@ -7,9 +7,11 @@ import { usePortfolio } from '@/hooks';
 import { PortfolioDrawer } from '@/components/PortfolioDrawer';
 import {
   PortfolioView,
-  CustosView,
+  FundingView,
+  FeesView,
   HistoricoView,
   PosicoesView,
+  BTCView,
   AuthView,
   LandingView,
   OnboardingView,
@@ -20,27 +22,41 @@ import {
   Receipt,
   History,
   Wallet,
+  Bitcoin,
   LogOut,
   Menu,
   X,
   ChevronLeft,
   ChevronRight,
-
+  ChevronDown,
+  DollarSign,
+  ArrowRightLeft,
   Sun,
   Moon,
   RefreshCw,
 } from 'lucide-react';
 
 
+// Main navigation items
 interface NavItem {
   id: View;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
+  subItems?: { id: View; label: string; icon: React.ComponentType<{ className?: string }> }[];
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'portfolio', label: 'Portfolio', icon: TrendingUp },
-  { id: 'custos', label: 'Custos', icon: Receipt },
+  { id: 'portfolio', label: 'Overview', icon: TrendingUp },
+  { id: 'btc', label: 'Bitcoin', icon: Bitcoin },
+  { 
+    id: 'funding', 
+    label: 'Custos', 
+    icon: Receipt,
+    subItems: [
+      { id: 'funding', label: 'Funding', icon: DollarSign },
+      { id: 'fees', label: 'Trading Fees', icon: ArrowRightLeft },
+    ]
+  },
   { id: 'posicoes', label: 'Posicoes', icon: Wallet },
   { id: 'historico', label: 'Historico', icon: History },
 ];
@@ -106,7 +122,9 @@ export default function App() {
   const renderView = () => {
     switch (currentView) {
       case 'portfolio': return <PortfolioView />;
-      case 'custos': return <CustosView />;
+      case 'btc': return <BTCView />;
+      case 'funding': return <FundingView />;
+      case 'fees': return <FeesView />;
       case 'historico': return <HistoricoView />;
       case 'posicoes': return <PosicoesView />;
       default: return <PortfolioView />;
@@ -259,6 +277,29 @@ interface SidebarProps {
 function Sidebar({ currentView, onNavClick, collapsed, onCollapseToggle, mobileOpen, onLogout }: SidebarProps) {
   const { portfolios, activePortfolioId } = usePortfolio();
   const connected = portfolios.length > 0;
+  
+  // Estado para controlar submenus expandidos
+  const [expandedMenus, setExpandedMenus] = useState<Set<string>>(() => {
+    // Inicialmente, expandir o menu que contém a view ativa
+    const activeItem = NAV_ITEMS.find(item => 
+      item.subItems?.some(sub => sub.id === currentView)
+    );
+    return activeItem ? new Set([activeItem.id]) : new Set();
+  });
+
+  const toggleMenu = (itemId: string, hasSubItems: boolean) => {
+    if (!hasSubItems) return;
+    
+    setExpandedMenus(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
+  };
 
   // Determine display info
   let displayName = 'Sem Conexão';
@@ -335,44 +376,123 @@ function Sidebar({ currentView, onNavClick, collapsed, onCollapseToggle, mobileO
         </div>
 
         {/* Menu Items */}
-        <div className="space-y-2">
+        <div className="space-y-1">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
-            const isActive = currentView === item.id;
+            const isParentActive = item.subItems?.some(sub => sub.id === currentView) || currentView === item.id;
+            const hasSubItems = item.subItems && item.subItems.length > 0;
+            const isExpanded = expandedMenus.has(item.id);
 
+            // If collapsed, just show the parent icon
+            if (collapsed) {
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    if (hasSubItems) {
+                      toggleMenu(item.id, hasSubItems);
+                    } else {
+                      onNavClick(item.id);
+                    }
+                  }}
+                  className={cn(
+                    "w-full flex items-center justify-center px-3 py-3 rounded-xl transition-all duration-200 group relative",
+                    isParentActive
+                      ? "text-text-primary"
+                      : "text-text-muted hover:text-text-primary hover:bg-surface-card"
+                  )}
+                >
+                  <Icon className={cn(
+                    "w-5 h-5 transition-colors flex-shrink-0",
+                    isParentActive ? "text-action-primary" : "text-text-muted group-hover:text-text-primary"
+                  )} />
+                  {isParentActive && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-action-primary/10 to-transparent rounded-xl opacity-50 pointer-events-none" />
+                  )}
+                </button>
+              );
+            }
+
+            // Expanded view with collapsible submenu
             return (
-              <button
-                key={item.id}
-                onClick={() => onNavClick(item.id)}
-                className={cn(
-                  "w-full flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-200 group relative",
-                  collapsed ? "justify-center" : "",
-                  isActive
-                    ? "text-text-primary"
-                    : "text-text-muted hover:text-text-primary hover:bg-surface-card"
-                )}
-              >
-                {/* Active Indicator Line (Left) */}
-                {isActive && !collapsed && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-action-primary rounded-r-full shadow-glow" />
-                )}
+              <div key={item.id} className="space-y-1">
+                {/* Parent Item - Click to toggle submenu */}
+                <button
+                  onClick={() => {
+                    if (hasSubItems) {
+                      toggleMenu(item.id, hasSubItems);
+                    } else {
+                      onNavClick(item.id);
+                    }
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-200 group relative",
+                    isParentActive
+                      ? "text-text-primary"
+                      : "text-text-muted hover:text-text-primary hover:bg-surface-card"
+                  )}
+                >
+                  {/* Active Indicator Line (Left) */}
+                  {isParentActive && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-action-primary rounded-r-full shadow-glow" />
+                  )}
 
-                <Icon className={cn(
-                  "w-5 h-5 transition-colors flex-shrink-0",
-                  isActive ? "text-action-primary" : "text-text-muted group-hover:text-text-primary"
-                )} />
+                  <Icon className={cn(
+                    "w-5 h-5 transition-colors flex-shrink-0",
+                    isParentActive ? "text-action-primary" : "text-text-muted group-hover:text-text-primary"
+                  )} />
 
-                {!collapsed && (
-                  <span className="text-sm font-medium">
+                  <span className="text-sm font-medium flex-1 text-left">
                     {item.label}
                   </span>
-                )}
 
-                {/* Active Glow/Bg (Optional, keeping minimal to match SafePay generally having clean bgs) */}
-                {isActive && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-action-primary/10 to-transparent rounded-xl opacity-50 pointer-events-none" />
+                  {/* Chevron for expandable items */}
+                  {hasSubItems && (
+                    <ChevronDown className={cn(
+                      "w-4 h-4 transition-transform duration-200 text-text-muted",
+                      isExpanded ? "rotate-180" : ""
+                    )} />
+                  )}
+
+                  {isParentActive && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-action-primary/10 to-transparent rounded-xl opacity-50 pointer-events-none" />
+                  )}
+                </button>
+
+                {/* Submenu Items - Animated */}
+                {hasSubItems && isExpanded && (
+                  <div className="ml-4 pl-4 border-l border-border-default space-y-1 animate-fade-in">
+                    {item.subItems!.map((subItem) => {
+                      const SubIcon = subItem.icon;
+                      const isSubActive = currentView === subItem.id;
+                      
+                      return (
+                        <button
+                          key={subItem.id}
+                          onClick={() => onNavClick(subItem.id)}
+                          className={cn(
+                            "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group text-left",
+                            isSubActive
+                              ? "text-text-primary bg-action-primary-muted/30"
+                              : "text-text-muted hover:text-text-primary hover:bg-surface-card"
+                          )}
+                        >
+                          <SubIcon className={cn(
+                            "w-4 h-4 transition-colors flex-shrink-0",
+                            isSubActive ? "text-action-primary" : "text-text-muted group-hover:text-text-primary"
+                          )} />
+                          <span className="text-sm">
+                            {subItem.label}
+                          </span>
+                          {isSubActive && (
+                            <div className="ml-auto w-1.5 h-1.5 rounded-full bg-action-primary" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
-              </button>
+              </div>
             );
           })}
         </div>

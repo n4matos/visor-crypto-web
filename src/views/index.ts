@@ -1,5 +1,7 @@
 export { PortfolioView } from './PortfolioView';
-export { CustosView } from './CustosView';
+export { BTCView } from './BTCView';
+export { FundingView } from './FundingView';
+export { FeesView } from './FeesView';
 export { HistoricoView } from './HistoricoView';
 export { PosicoesView } from './PosicoesView';
 
