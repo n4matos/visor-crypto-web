@@ -155,7 +155,7 @@ function FilterButtons<T extends string>({ options, value, onChange, labels }: F
           onClick={() => onChange(option)}
           className={cn("px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200",
             value === option
-              ? "bg-action-primary text-white"
+              ? "bg-action-primary text-text-on-primary"
               : "bg-surface-card-alt text-text-secondary hover:text-text-primary"
           )}>
           {labels[option]}

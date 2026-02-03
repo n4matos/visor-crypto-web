@@ -11,7 +11,7 @@ import {
     SheetFooter
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Plus, MoreVertical, Wallet, Trash2, Settings } from 'lucide-react';
+import { Plus, MoreVertical, Wallet, Trash2, Settings, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
     AlertDialog,
@@ -70,65 +70,70 @@ export function PortfolioDrawer({ children, open, onOpenChange }: PortfolioDrawe
                 {children && <SheetTrigger asChild>{children}</SheetTrigger>}
                 <SheetContent
                     side="right"
-                    className="w-[380px] sm:w-[500px] flex flex-col p-0 bg-surface-page border-l border-border-default shadow-2xl"
+                    className="w-[380px] sm:w-[460px] flex flex-col p-0 bg-surface-sidebar border-l border-border-default"
                 >
-                    <SheetHeader className="px-6 py-8 border-b border-border-subtle bg-surface-sidebar/50 backdrop-blur-sm">
-                        <div className="flex items-center gap-3 mb-1">
-                            <div className="p-2 rounded-lg bg-action-primary/10">
+                    {/* Header - Following Sidebar spec from design-system */}
+                    <SheetHeader className="px-5 py-6 border-b border-border-subtle bg-surface-sidebar">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-action-primary-muted flex items-center justify-center">
                                 <Wallet className="w-5 h-5 text-action-primary" />
                             </div>
-                            <SheetTitle className="text-xl font-bold text-text-primary tracking-tight">
-                                Meus Portfólios
-                            </SheetTitle>
+                            <div>
+                                <SheetTitle className="text-lg font-semibold text-text-primary tracking-tight">
+                                    Meus Portfólios
+                                </SheetTitle>
+                                <SheetDescription className="text-sm text-text-secondary mt-0.5">
+                                    Gerencie suas carteiras conectadas
+                                </SheetDescription>
+                            </div>
                         </div>
-                        <SheetDescription className="text-text-secondary text-sm ml-11">
-                            Gerencie as conexões e carteiras que alimentam seu painel.
-                        </SheetDescription>
                     </SheetHeader>
 
-                    <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                        {/* Global View Option */}
+                    <div className="flex-1 overflow-y-auto p-5 space-y-6">
+                        {/* Global View Option - Following Card spec */}
                         <div className="space-y-3">
-                            <h4 className="text-xs font-bold text-text-muted uppercase tracking-wider px-1">Visão Global</h4>
+                            <h4 className="text-xs font-medium text-text-muted uppercase tracking-wider">
+                                Visão Global
+                            </h4>
                             <div
                                 onClick={() => handleSelect(null)}
                                 className={cn(
-                                    "relative group flex items-start gap-4 p-4 rounded-2xl border transition-all duration-300 cursor-pointer overflow-hidden",
+                                    "relative flex items-center gap-4 p-4 rounded-xl border transition-all duration-200 cursor-pointer",
                                     activePortfolioId === null
-                                        ? "bg-action-primary-muted border-action-primary shadow-glow"
-                                        : "bg-surface-card hover:bg-surface-card-alt border-border-default hover:border-border-strong"
+                                        ? "bg-action-primary-muted border-action-primary"
+                                        : "bg-surface-card border-border-default hover:border-border-strong hover:bg-surface-card-alt"
                                 )}
                             >
-                                {/* Active Indicator Bar */}
+                                {/* Active Indicator - Following Table Row spec */}
                                 {activePortfolioId === null && (
-                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-action-primary" />
+                                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-8 bg-action-primary rounded-r-full" />
                                 )}
 
                                 <div className={cn(
-                                    "mt-1 w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 shadow-inner",
+                                    "w-11 h-11 rounded-xl flex items-center justify-center transition-all",
                                     activePortfolioId === null
-                                        ? "bg-action-primary text-white shadow-lg shadow-action-primary/20 scale-105"
-                                        : "bg-surface-elevated text-text-muted group-hover:text-text-primary group-hover:bg-surface-input"
+                                        ? "bg-action-primary text-text-on-primary"
+                                        : "bg-surface-elevated text-text-muted"
                                 )}>
-                                    <TrendingUpIcon active={activePortfolioId === null} />
+                                    <TrendingUp className="w-5 h-5" />
                                 </div>
 
-                                <div className="flex-1 min-w-0 py-0.5">
+                                <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between">
                                         <h3 className={cn(
-                                            "font-semibold text-base transition-colors",
+                                            "font-semibold text-sm",
                                             activePortfolioId === null ? "text-action-primary" : "text-text-primary"
                                         )}>
                                             Todos os Ativos
                                         </h3>
                                         {activePortfolioId === null && (
-                                            <Badge className="bg-action-primary text-white hover:bg-action-primary border-0 shadow-sm">
-                                                Selecionado
+                                            <Badge className="bg-action-primary text-text-on-primary border-0 text-xs">
+                                                Ativo
                                             </Badge>
                                         )}
                                     </div>
-                                    <p className="text-sm text-text-secondary mt-1 leading-relaxed">
-                                        Consolida todas as suas contas conectadas em uma única visão unificada.
+                                    <p className="text-sm text-text-secondary mt-0.5">
+                                        Consolida todas as suas contas
                                     </p>
                                 </div>
                             </div>
@@ -136,16 +141,16 @@ export function PortfolioDrawer({ children, open, onOpenChange }: PortfolioDrawe
 
                         {/* Connected Wallets List */}
                         <div className="space-y-3">
-                            <div className="flex items-center justify-between px-1">
-                                <h4 className="text-xs font-bold text-text-muted uppercase tracking-wider">
+                            <div className="flex items-center justify-between">
+                                <h4 className="text-xs font-medium text-text-muted uppercase tracking-wider">
                                     Contas Individuais
                                 </h4>
-                                <span className="text-xs text-text-muted bg-surface-elevated px-2 py-0.5 rounded-full">
+                                <span className="text-xs text-text-muted bg-surface-elevated px-2 py-0.5 rounded-md">
                                     {portfolios.length}
                                 </span>
                             </div>
 
-                            <div className="grid gap-3">
+                            <div className="space-y-2">
                                 {portfolios.map((portfolio) => {
                                     const isActive = activePortfolioId === portfolio.id;
                                     return (
@@ -153,76 +158,77 @@ export function PortfolioDrawer({ children, open, onOpenChange }: PortfolioDrawe
                                             key={portfolio.id}
                                             onClick={() => handleSelect(portfolio.id)}
                                             className={cn(
-                                                "group relative flex items-center gap-4 p-3.5 rounded-xl border transition-all duration-200 cursor-pointer overflow-hidden",
+                                                "group relative flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 cursor-pointer",
                                                 isActive
-                                                    ? "bg-surface-elevated border-action-primary/50 shadow-glow-strong"
-                                                    : "bg-surface-card hover:bg-surface-card-alt border-border-default hover:border-border-strong hover:translate-x-1"
+                                                    ? "bg-surface-elevated border-action-primary/50"
+                                                    : "bg-surface-card border-border-default hover:border-border-strong hover:bg-surface-card-alt"
                                             )}
                                         >
-                                            {/* Exchange Logo/Initial */}
+                                            {/* Active Indicator */}
+                                            {isActive && (
+                                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-action-primary rounded-r-full" />
+                                            )}
+
+                                            {/* Exchange Logo */}
                                             <div className={cn(
-                                                "w-12 h-12 rounded-xl flex flex-col items-center justify-center border transition-all duration-300 shrink-0",
+                                                "w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold tracking-wider shrink-0 border",
                                                 isActive
-                                                    ? "bg-gradient-to-br from-action-primary to-action-primary-hover border-transparent text-white shadow-lg"
-                                                    : "bg-surface-input border-border-subtle text-text-secondary group-hover:border-border-strong"
+                                                    ? "bg-action-primary border-action-primary text-text-on-primary"
+                                                    : "bg-surface-input border-border-subtle text-text-secondary"
                                             )}>
-                                                <span className="text-xs font-bold tracking-widest">
-                                                    {portfolio.exchange.substring(0, 2).toUpperCase()}
-                                                </span>
+                                                {portfolio.exchange.substring(0, 2).toUpperCase()}
                                             </div>
 
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 mb-0.5">
+                                                <div className="flex items-center gap-2">
                                                     <h3 className={cn(
-                                                        "font-semibold truncate transition-colors",
-                                                        isActive ? "text-action-primary" : "text-text-primary group-hover:text-text-primary"
+                                                        "font-medium text-sm truncate",
+                                                        isActive ? "text-action-primary" : "text-text-primary"
                                                     )}>
                                                         {portfolio.label}
                                                     </h3>
-                                                    {isActive && <div className="w-1.5 h-1.5 rounded-full bg-action-primary animate-pulse" />}
+                                                    {isActive && <div className="w-1.5 h-1.5 rounded-full bg-action-primary" />}
                                                 </div>
 
-                                                <div className="flex items-center gap-3 text-xs text-text-secondary">
-                                                    <span className="flex items-center gap-1.5 text-text-muted bg-surface-elevated px-1.5 py-0.5 rounded-md border border-border-subtle">
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <span className="text-xs text-text-muted bg-surface-elevated px-1.5 py-0.5 rounded">
                                                         {portfolio.exchange}
                                                     </span>
-                                                    <span className="font-mono opacity-60 tracking-wider">
+                                                    <span className="text-xs text-text-muted font-mono">
                                                         {portfolio.api_key_masked}
                                                     </span>
                                                 </div>
                                             </div>
 
-                                            {/* Actions */}
+                                            {/* Actions Dropdown */}
                                             <div onClick={(e) => e.stopPropagation()}>
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className={cn(
-                                                                "h-8 w-8 rounded-lg transition-all",
-                                                                isActive
-                                                                    ? "text-text-secondary hover:text-text-primary hover:bg-surface-card"
-                                                                    : "text-text-muted hover:text-text-primary hover:bg-surface-elevated"
-                                                            )}
+                                                            className="h-8 w-8 rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-card"
                                                         >
                                                             <MoreVertical className="w-4 h-4" />
                                                         </Button>
                                                     </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="w-48 bg-surface-card border-border-default shadow-xl rounded-xl p-1">
+                                                    <DropdownMenuContent 
+                                                        align="end" 
+                                                        className="w-44 bg-surface-card border-border-default shadow-lg rounded-lg p-1"
+                                                    >
                                                         <DropdownMenuItem
                                                             onClick={() => handleEdit(portfolio)}
-                                                            className="flex items-center gap-2 p-2.5 rounded-lg focus:bg-surface-elevated cursor-pointer"
+                                                            className="flex items-center gap-2 px-3 py-2 rounded-md focus:bg-surface-elevated cursor-pointer"
                                                         >
                                                             <Settings className="w-4 h-4 text-text-secondary" />
-                                                            <span className="text-sm font-medium">Renomear</span>
+                                                            <span className="text-sm">Renomear</span>
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem
-                                                            className="flex items-center gap-2 p-2.5 rounded-lg focus:bg-status-error-muted text-status-error focus:text-status-error cursor-pointer"
+                                                            className="flex items-center gap-2 px-3 py-2 rounded-md focus:bg-status-error-muted text-status-error focus:text-status-error cursor-pointer"
                                                             onClick={() => setPortfolioToDelete(portfolio)}
                                                         >
                                                             <Trash2 className="w-4 h-4" />
-                                                            <span className="text-sm font-medium">Desconectar</span>
+                                                            <span className="text-sm">Desconectar</span>
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
@@ -234,13 +240,14 @@ export function PortfolioDrawer({ children, open, onOpenChange }: PortfolioDrawe
                         </div>
                     </div>
 
-                    <SheetFooter className="p-6 border-t border-border-subtle bg-surface-elevated/30">
+                    {/* Footer */}
+                    <SheetFooter className="p-5 border-t border-border-subtle bg-surface-sidebar">
                         <Button
-                            className="w-full h-11 gap-2 bg-action-primary hover:bg-action-primary-hover text-white shadow-glow hover:shadow-glow-strong transition-all duration-300 rounded-xl"
+                            className="w-full h-11 gap-2 bg-action-primary hover:bg-action-primary-hover text-text-on-primary shadow-glow transition-all duration-200 rounded-lg"
                             onClick={() => setShowAddDialog(true)}
                         >
                             <Plus className="w-5 h-5" />
-                            <span className="font-medium">Conectar Nova Carteira</span>
+                            <span className="font-medium text-sm">Conectar Nova Carteira</span>
                         </Button>
                     </SheetFooter>
                 </SheetContent>
@@ -258,20 +265,22 @@ export function PortfolioDrawer({ children, open, onOpenChange }: PortfolioDrawe
             />
 
             <AlertDialog open={!!portfolioToDelete} onOpenChange={(open) => !open && setPortfolioToDelete(null)}>
-                <AlertDialogContent className="bg-surface-card border-border-default">
+                <AlertDialogContent className="bg-surface-card border-border-default rounded-xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-text-primary">Desconectar Carteira?</AlertDialogTitle>
-                        <AlertDialogDescription className="text-text-secondary">
-                            Tem certeza que deseja desconectar a carteira <span className="font-semibold text-text-primary">{portfolioToDelete?.label}</span>?
-                            Esta ação não pode ser desfeita e você perderá o histórico de visualização desta conta.
+                        <AlertDialogTitle className="text-text-primary text-lg">
+                            Desconectar Carteira?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-text-secondary text-sm">
+                            Tem certeza que deseja desconectar a carteira <span className="font-medium text-text-primary">{portfolioToDelete?.label}</span>?
+                            Esta ação não pode ser desfeita.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-surface-elevated text-text-primary border-border-default hover:bg-surface-card-alt">
+                    <AlertDialogFooter className="gap-2">
+                        <AlertDialogCancel className="bg-surface-elevated text-text-primary border-border-default hover:bg-surface-card-alt rounded-lg h-10">
                             Cancelar
                         </AlertDialogCancel>
                         <AlertDialogAction
-                            className="bg-status-error text-white hover:bg-status-error/90 border-0"
+                            className="bg-status-error text-text-on-primary hover:bg-status-error/90 border-0 rounded-lg h-10"
                             onClick={() => {
                                 if (portfolioToDelete) {
                                     removePortfolio(portfolioToDelete.id);
@@ -285,24 +294,5 @@ export function PortfolioDrawer({ children, open, onOpenChange }: PortfolioDrawe
                 </AlertDialogContent>
             </AlertDialog>
         </>
-    );
-}
-
-// Icon component for the "All Assets" view
-function TrendingUpIcon({ active }: { active: boolean }) {
-    return (
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={cn("w-5 h-5", active ? "text-white" : "text-current")}
-        >
-            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-            <polyline points="16 7 22 7 22 13" />
-        </svg>
     );
 }

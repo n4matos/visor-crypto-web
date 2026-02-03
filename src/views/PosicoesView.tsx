@@ -105,8 +105,8 @@ export function PosicoesView() {
           </div>
           <Badge variant="outline"
             className={cn("text-xs",
-              stats.totalFunding >= 0 
-                ? "border-status-success/30 text-status-success bg-status-success/10" 
+              stats.totalFunding >= 0
+                ? "border-status-success/30 text-status-success bg-status-success/10"
                 : "border-status-error/30 text-status-error bg-status-error/10"
             )}>
             {stats.totalFunding >= 0 ? 'RECEBENDO' : 'PAGANDO'}

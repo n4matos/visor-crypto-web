@@ -226,10 +226,10 @@ export function CustosView() {
       {/* Tabs */}
       <Tabs defaultValue="trading" className="space-y-4">
         <TabsList className="bg-surface-card-alt border border-border-default h-9">
-          <TabsTrigger value="trading" className="text-xs data-[state=active]:bg-action-primary data-[state=active]:text-white">
+          <TabsTrigger value="trading" className="text-xs data-[state=active]:bg-action-primary data-[state=active]:text-text-on-primary">
             Trading Fees
           </TabsTrigger>
-          <TabsTrigger value="funding" className="text-xs data-[state=active]:bg-action-primary data-[state=active]:text-white">
+          <TabsTrigger value="funding" className="text-xs data-[state=active]:bg-action-primary data-[state=active]:text-text-on-primary">
             Funding
           </TabsTrigger>
         </TabsList>
@@ -256,7 +256,7 @@ export function CustosView() {
                     )}
                   </div>
                 </div>
-                
+
                 {/* Fee trend visualization */}
                 <div className="h-[180px] mt-4">
                   <ResponsiveContainer width="100%" height="100%">
@@ -266,8 +266,8 @@ export function CustosView() {
                     ]}>
                       <defs>
                         <linearGradient id="feeGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="var(--status-error)" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="var(--status-error)" stopOpacity={0}/>
+                          <stop offset="5%" stopColor="var(--status-error)" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="var(--status-error)" stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
@@ -289,17 +289,17 @@ export function CustosView() {
               <Card className="p-4 border border-border-default bg-surface-card">
                 <h2 className="text-sm font-semibold text-text-primary mb-1">Breakdown</h2>
                 <p className="text-xs text-text-secondary mb-3">Maker vs Taker</p>
-                
+
                 <div className="h-[120px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie 
-                        data={pieData} 
-                        cx="50%" 
-                        cy="50%" 
-                        innerRadius={35} 
-                        outerRadius={55} 
-                        paddingAngle={3} 
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={35}
+                        outerRadius={55}
+                        paddingAngle={3}
                         dataKey="value"
                       >
                         {pieData.map((d, i) => <Cell key={i} fill={d.color} stroke="none" />)}
@@ -316,7 +316,7 @@ export function CustosView() {
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-                
+
                 <div className="mt-2 space-y-2">
                   <CompactFeeRow label="Maker" value={periodMakerTotal || feeBreakdown.makerTotal} percent={feeBreakdown.makerPercent} color="bg-status-success" />
                   <CompactFeeRow label="Taker" value={periodTakerTotal || feeBreakdown.takerTotal} percent={feeBreakdown.takerPercent} color="bg-status-error" />
@@ -343,7 +343,7 @@ export function CustosView() {
                 <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center",
                   fundingTotals.periodValue >= 0 ? "bg-status-success/20" : "bg-status-error/20"
                 )}>
-                  {fundingTotals.periodValue >= 0 
+                  {fundingTotals.periodValue >= 0
                     ? <TrendingUp className="w-5 h-5 text-status-success" />
                     : <TrendingDown className="w-5 h-5 text-status-error" />
                   }
@@ -388,22 +388,22 @@ export function CustosView() {
                   </Badge>
                 </div>
               </div>
-              
+
               <div className="h-[200px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={fundingWaterfallData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
-                    <XAxis 
-                      dataKey="shortPeriod" 
-                      tick={{ fill: 'var(--chart-axis-label)', fontSize: 11 }} 
-                      tickLine={false} 
-                      axisLine={{ stroke: 'var(--chart-grid)' }} 
+                    <XAxis
+                      dataKey="shortPeriod"
+                      tick={{ fill: 'var(--chart-axis-label)', fontSize: 11 }}
+                      tickLine={false}
+                      axisLine={{ stroke: 'var(--chart-grid)' }}
                     />
-                    <YAxis 
-                      tick={{ fill: 'var(--chart-axis-label)', fontSize: 11 }} 
-                      tickLine={false} 
-                      axisLine={false} 
-                      tickFormatter={(v) => `$${Math.abs(v).toFixed(0)}`} 
+                    <YAxis
+                      tick={{ fill: 'var(--chart-axis-label)', fontSize: 11 }}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v) => `$${Math.abs(v).toFixed(0)}`}
                     />
                     <Tooltip content={({ active, payload, label }) => active && payload?.length ? (
                       <div className="bg-surface-card border border-border-default rounded-lg p-3 shadow-lg">
@@ -437,7 +437,7 @@ export function CustosView() {
                   className={cn(
                     "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
                     activeFundingTab === 'usdt'
-                      ? "bg-action-primary text-white"
+                      ? "bg-action-primary text-text-on-primary"
                       : "bg-surface-card-alt text-text-secondary hover:text-text-primary"
                   )}
                 >
@@ -450,7 +450,7 @@ export function CustosView() {
                     className={cn(
                       "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
                       activeFundingTab === 'other'
-                        ? "bg-action-primary text-white"
+                        ? "bg-action-primary text-text-on-primary"
                         : "bg-surface-card-alt text-text-secondary hover:text-text-primary"
                     )}
                   >
@@ -509,11 +509,11 @@ export function CustosView() {
                                   </span>
                                 </td>
                                 <td className="py-2 px-3 text-center">
-                                  <Badge 
-                                    variant="outline" 
+                                  <Badge
+                                    variant="outline"
                                     className={cn("text-xs",
-                                      displayValue >= 0 
-                                        ? "border-status-success/30 text-status-success bg-status-success/10" 
+                                      displayValue >= 0
+                                        ? "border-status-success/30 text-status-success bg-status-success/10"
                                         : "border-status-error/30 text-status-error bg-status-error/10"
                                     )}
                                   >
@@ -538,8 +538,8 @@ export function CustosView() {
                       const displayValue = getFundingDisplayValue(asset, period);
                       return (
                         <Card key={asset.symbol} className={cn("p-3 border transition-all duration-200",
-                          displayValue >= 0 
-                            ? "border-status-success/30 bg-status-success-muted/20" 
+                          displayValue >= 0
+                            ? "border-status-success/30 bg-status-success-muted/20"
                             : "border-status-error/30 bg-status-error-muted/20"
                         )}>
                           <div className="flex items-center justify-between mb-2">
@@ -552,18 +552,18 @@ export function CustosView() {
                                 <p className="text-xs text-text-muted">Funding na moeda base</p>
                               </div>
                             </div>
-                            <Badge 
-                              variant="outline" 
+                            <Badge
+                              variant="outline"
                               className={cn("text-xs",
-                                displayValue >= 0 
-                                  ? "border-status-success/30 text-status-success" 
+                                displayValue >= 0
+                                  ? "border-status-success/30 text-status-success"
                                   : "border-status-error/30 text-status-error"
                               )}
                             >
                               {displayValue >= 0 ? 'Recebendo' : 'Pagando'}
                             </Badge>
                           </div>
-                          
+
                           <div className="grid grid-cols-2 gap-2 mt-3">
                             <CompactFundingCell label="24H" value={parseFloat(asset.today)} currency={asset.currency} />
                             <CompactFundingCell label="7D" value={parseFloat(asset.week)} currency={asset.currency} />
@@ -647,9 +647,9 @@ function CompactMetricCard({ title, value, subtitle, icon, variant = 'default', 
       <div className="mt-2">
         <p className="text-xs text-text-secondary">{title}</p>
         <p className={cn("text-lg font-bold font-mono",
-          variant === 'error' ? 'text-status-error' : 
-          variant === 'success' ? 'text-status-success' : 
-          'text-text-primary'
+          variant === 'error' ? 'text-status-error' :
+            variant === 'success' ? 'text-status-success' :
+              'text-text-primary'
         )}>
           {value}
         </p>

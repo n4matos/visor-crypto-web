@@ -25,7 +25,7 @@ export function PeriodSelector({ value, onChange }: PeriodSelectorProps) {
           className={cn(
             "px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200",
             value === period.value 
-              ? "bg-action-primary text-white" 
+              ? "bg-action-primary text-text-on-primary" 
               : "text-text-secondary hover:text-text-primary hover:bg-surface-elevated"
           )}
         >
