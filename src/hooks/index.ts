@@ -7,3 +7,4 @@ export { useFees } from './useFees';
 export { useTheme } from './useTheme';
 export { useIsMobile } from './use-mobile';
 export { usePortfolio } from '../contexts/PortfolioContext';
+export { useWallet } from './useWallet';

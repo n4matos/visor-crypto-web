@@ -39,7 +39,7 @@ export function HistoricoView() {
   }, [transactions, searchQuery, directionFilter, typeFilter]);
 
   if (isLoading && transactions.length === 0) {
-    return <ViewLoading message="Carregando historico..." />;
+    return <ViewLoading message="Carregando histórico..." />;
   }
 
   if (error) {
@@ -47,88 +47,91 @@ export function HistoricoView() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <PageHeader title="Historico de Trades" subtitle="Visualize todos os seus trades executados">
-        <Button variant="outline" className="gap-2 border-border-default hover:bg-surface-card-alt">
-          <Download className="w-4 h-4" />Exportar CSV
+    <div className="space-y-4 animate-fade-in">
+      <PageHeader title="Histórico de Trades" subtitle="Visualize todos os seus trades executados">
+        <Button variant="outline" size="sm" className="h-8 text-xs gap-2 border-border-default hover:bg-surface-card-alt">
+          <Download className="w-3.5 h-3.5" />Exportar CSV
         </Button>
       </PageHeader>
 
-      {/* Filters */}
-      <Card className="p-4 border border-border-default bg-surface-card">
-        <div className="flex flex-col lg:flex-row gap-4">
+      {/* Filters - Compact */}
+      <Card className="p-3 border border-border-default bg-surface-card">
+        <div className="flex flex-col lg:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
             <Input
               placeholder="Buscar por par..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 bg-surface-input border-border-default"
+              className="h-9 pl-9 text-sm bg-surface-input border-border-default"
             />
           </div>
           <FilterButtons
             options={['ALL', 'Buy', 'Sell'] as const}
             value={directionFilter}
             onChange={setDirectionFilter}
-            labels={{ ALL: 'Tudo', Buy: 'COMPRA', Sell: 'VENDA' }}
+            labels={{ ALL: 'Tudo', Buy: 'Compra', Sell: 'Venda' }}
           />
           <FilterButtons
             options={['ALL', 'TRADE', 'SETTLEMENT', 'FEE', 'TRANSFER'] as const}
             value={typeFilter}
             onChange={setTypeFilter}
-            labels={{ ALL: 'Tudo', TRADE: 'TRADE', SETTLEMENT: 'SETTLE', FEE: 'TAXA', TRANSFER: 'TRANSFER' }}
+            labels={{ ALL: 'Tudo', TRADE: 'Trade', SETTLEMENT: 'Settle', FEE: 'Taxa', TRANSFER: 'Transf' }}
           />
         </div>
       </Card>
 
-      {/* Trade Table */}
+      {/* Trade Table - Dense */}
       <Card className="border border-border-default bg-surface-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-border-default bg-surface-card-alt/50">
-                <th className="text-left py-3 px-4 text-xs font-medium text-text-secondary uppercase">Data</th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-text-secondary uppercase">Par</th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-text-secondary uppercase">Tipo</th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-text-secondary uppercase">Lado</th>
-                <th className="text-right py-3 px-4 text-xs font-medium text-text-secondary uppercase">Quantidade</th>
-                <th className="text-right py-3 px-4 text-xs font-medium text-text-secondary uppercase">Preco</th>
-                <th className="text-right py-3 px-4 text-xs font-medium text-text-secondary uppercase">Taxa</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-text-secondary">Data</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-text-secondary">Par</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-text-secondary">Tipo</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-text-secondary">Lado</th>
+                <th className="text-right py-2 px-3 text-xs font-medium text-text-secondary">Quantidade</th>
+                <th className="text-right py-2 px-3 text-xs font-medium text-text-secondary">Preço</th>
+                <th className="text-right py-2 px-3 text-xs font-medium text-text-secondary">Taxa</th>
               </tr>
             </thead>
             <tbody>
               {filteredTrades.slice(0, MAX_TRADES_DISPLAY).map((trade) => (
-                <tr key={trade.id} className="border-b border-border-subtle hover:bg-surface-card-alt/50 transition-colors">
-                  <td className="py-3 px-4 text-sm text-text-secondary">
+                <tr key={trade.id} className="border-b border-border-default/50 hover:bg-surface-card-alt/30 transition-colors">
+                  <td className="py-2 px-3 text-xs text-text-secondary">
                     {new Date(trade.executed_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                   </td>
-                  <td className="py-3 px-4 text-sm font-medium text-text-primary">{trade.symbol}</td>
-                  <td className="py-3 px-4">
+                  <td className="py-2 px-3">
+                    <span className="text-xs font-medium text-text-primary">{trade.symbol.replace('USDT', '')}</span>
+                    <span className="text-xs text-text-muted">/USDT</span>
+                  </td>
+                  <td className="py-2 px-3">
                     <Badge variant="outline" className="text-xs border-border-default">
                       {trade.type}
                     </Badge>
                   </td>
-                  <td className="py-3 px-4">
-                    <Badge variant={trade.side === 'Buy' ? 'default' : 'destructive'}
+                  <td className="py-2 px-3">
+                    <Badge variant="outline"
                       className={cn("text-xs",
                         trade.side === 'Buy'
-                          ? "bg-status-success/20 text-status-success border-status-success/30"
-                          : "bg-status-error/20 text-status-error border-status-error/30"
+                          ? "border-status-success/30 text-status-success bg-status-success/10"
+                          : "border-status-error/30 text-status-error bg-status-error/10"
                       )}>
                       {trade.side === 'Buy' ? 'COMPRA' : 'VENDA'}
                     </Badge>
                   </td>
-                  <td className="py-3 px-4 text-sm font-mono text-text-primary text-right">{parseFloat(trade.qty).toFixed(6)}</td>
-                  <td className="py-3 px-4 text-sm font-mono text-text-primary text-right">${parseFloat(trade.price).toFixed(2)}</td>
-                  <td className="py-3 px-4 text-sm font-mono text-status-error text-right">${parseFloat(trade.fee).toFixed(2)}</td>
+                  <td className="py-2 px-3 text-xs font-mono text-text-primary text-right">{parseFloat(trade.qty).toFixed(6)}</td>
+                  <td className="py-2 px-3 text-xs font-mono text-text-primary text-right">${parseFloat(trade.price).toFixed(2)}</td>
+                  <td className="py-2 px-3 text-xs font-mono text-status-error text-right">${parseFloat(trade.fee).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
         {filteredTrades.length === 0 && (
-          <div className="p-8 text-center text-text-secondary">
-            Nenhuma transacao encontrada.
+          <div className="p-6 text-center text-sm text-text-secondary">
+            Nenhuma transação encontrada.
           </div>
         )}
       </Card>
@@ -152,7 +155,7 @@ function FilterButtons<T extends string>({ options, value, onChange, labels }: F
           onClick={() => onChange(option)}
           className={cn("px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200",
             value === option
-              ? "bg-action-primary text-white"
+              ? "bg-action-primary text-text-on-primary"
               : "bg-surface-card-alt text-text-secondary hover:text-text-primary"
           )}>
           {labels[option]}

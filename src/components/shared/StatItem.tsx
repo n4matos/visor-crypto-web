@@ -8,6 +8,7 @@ interface StatItemProps {
   value: string;
   valueColor?: string;
   layout?: 'row' | 'compact';
+  subtitle?: string;
 }
 
 export function StatItem({
@@ -16,20 +17,22 @@ export function StatItem({
   label,
   value,
   valueColor = 'text-text-primary',
-  layout = 'row',
+  layout = 'compact',
+  subtitle,
 }: StatItemProps) {
   if (layout === 'compact') {
     return (
-      <Card className="p-4 border border-border-default bg-surface-card">
+      <Card className="p-3 border border-border-default bg-surface-card">
         <div className="flex items-center gap-3">
           {icon && (
-            <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", iconBg)}>
+            <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0", iconBg)}>
               {icon}
             </div>
           )}
-          <div>
-            <span className="text-xs text-text-secondary uppercase">{label}</span>
-            <p className={cn("text-xl font-bold font-mono", valueColor)}>{value}</p>
+          <div className="min-w-0">
+            <p className="text-xs text-text-secondary truncate">{label}</p>
+            <p className={cn("text-base font-bold font-mono truncate", valueColor)}>{value}</p>
+            {subtitle && <p className="text-xs text-text-muted truncate">{subtitle}</p>}
           </div>
         </div>
       </Card>

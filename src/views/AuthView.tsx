@@ -166,7 +166,7 @@ export function AuthView({
         {/* Logo */}
         <div className="flex items-center justify-center gap-3 mb-8">
           <div className="w-12 h-12 rounded-xl bg-action-primary flex items-center justify-center shadow-glow">
-            <TrendingUp className="w-7 h-7 text-white" />
+            <TrendingUp className="w-7 h-7 text-text-on-primary" />
           </div>
           <span className="text-2xl font-bold text-text-primary tracking-tight">
             Visor Crypto
@@ -336,7 +336,7 @@ export function AuthView({
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full h-11 bg-action-primary hover:bg-action-primary-hover text-white font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full h-11 bg-action-primary hover:bg-action-primary-hover text-text-on-primary font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <>

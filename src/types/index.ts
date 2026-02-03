@@ -54,3 +54,12 @@ export interface Position {
   fundingRate: number;
   fundingInterval: string;
 }
+
+export interface WalletAsset {
+  coin: string;
+  iconUrl: string;
+  amount: string;
+  price: number;
+  total: number;
+  change24h: number;
+}

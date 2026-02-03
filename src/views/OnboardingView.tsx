@@ -257,7 +257,7 @@ export function OnboardingView({ onComplete }: OnboardingViewProps) {
                                         <Button
                                             onClick={handleCredentialsSubmit}
                                             disabled={isSubmitting}
-                                            className="flex-1 h-12 bg-action-primary hover:bg-action-primary-hover text-white font-medium shadow-glow"
+                                            className="flex-1 h-12 bg-action-primary hover:bg-action-primary-hover text-text-on-primary font-medium shadow-glow"
                                         >
                                             {isSubmitting ? (
                                                 <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Conectando...</>
@@ -386,7 +386,7 @@ export function OnboardingView({ onComplete }: OnboardingViewProps) {
                                             "w-5 h-5 rounded-full border flex items-center justify-center",
                                             selectedAccountType === 'unified' ? "border-action-primary bg-action-primary" : "border-text-muted"
                                         )}>
-                                            {selectedAccountType === 'unified' && <CheckCircle2 className="w-3 h-3 text-white" />}
+                                            {selectedAccountType === 'unified' && <CheckCircle2 className="w-3 h-3 text-text-on-primary" />}
                                         </div>
                                     </div>
 
@@ -412,14 +412,14 @@ export function OnboardingView({ onComplete }: OnboardingViewProps) {
                                             "w-5 h-5 rounded-full border flex items-center justify-center",
                                             selectedAccountType === 'standard' ? "border-action-primary bg-action-primary" : "border-text-muted"
                                         )}>
-                                            {selectedAccountType === 'standard' && <CheckCircle2 className="w-3 h-3 text-white" />}
+                                            {selectedAccountType === 'standard' && <CheckCircle2 className="w-3 h-3 text-text-on-primary" />}
                                         </div>
                                     </div>
                                 </div>
 
                                 <Button
                                     onClick={handleAccountSelection}
-                                    className="w-full h-12 bg-action-primary hover:bg-action-primary-hover text-white font-medium shadow-glow mt-2"
+                                    className="w-full h-12 bg-action-primary hover:bg-action-primary-hover text-text-on-primary font-medium shadow-glow mt-2"
                                 >
                                     Finalizar Configuração
                                 </Button>

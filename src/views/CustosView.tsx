@@ -1,14 +1,15 @@
 import { useMemo, useEffect, useState } from 'react';
-import { Receipt, DollarSign, TrendingDown, TrendingUp, Bitcoin } from 'lucide-react';
+import { Receipt, DollarSign, TrendingDown, TrendingUp, ArrowRightLeft, Wallet } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { PeriodSelector } from '@/components/PeriodSelector';
-import { MetricCard } from '@/components/cards';
+
 import { ViewLoading, ViewError, PageHeader } from '@/components/shared';
 import { useFunding, useFees, useTransactions } from '@/hooks';
 import type { Period } from '@/types';
+import { usePortfolio } from '@/contexts/PortfolioContext';
 import {
   XAxis,
   YAxis,
@@ -20,33 +21,48 @@ import {
   Cell,
   PieChart,
   Pie,
-  Legend,
+
+  Area,
+  AreaChart,
 } from 'recharts';
 
 // Helper to get currency symbol
 const getCurrencySymbol = (currency: string): string => {
-  const symbols: Record<string, string> = { 'USDT': '$', 'BTC': '\u20BF', 'ETH': '\u039E', 'SOL': '\u25CE' };
+  const symbols: Record<string, string> = { 'USDT': '$', 'BTC': '₿', 'ETH': 'Ξ', 'SOL': '◎' };
   return symbols[currency] || currency;
 };
 
 // Period to display label
 const getPeriodLabel = (period: Period): string => {
-  switch (period) {
-    case '24h': return 'Hoje';
-    case '7d': return 'Semana';
-    case '30d': return 'Mes';
-    case '90d': return 'Trimestre';
-    case '1y': return 'Ano';
-    case 'all': return 'Total';
-    default: return 'Periodo';
-  }
+  const labels: Record<Period, string> = {
+    '24h': '24H',
+    '7d': '7D',
+    '30d': '30D',
+    '90d': '90D',
+    '1y': '1A',
+    'all': 'TUDO'
+  };
+  return labels[period];
 };
 
-import { usePortfolio } from '@/contexts/PortfolioContext';
+const getPeriodFullLabel = (period: Period): string => {
+  const labels: Record<Period, string> = {
+    '24h': 'Últimas 24 horas',
+    '7d': 'Últimos 7 dias',
+    '30d': 'Últimos 30 dias',
+    '90d': 'Últimos 90 dias',
+    '1y': 'Último ano',
+    'all': 'Todo período'
+  };
+  return labels[period];
+};
+
+
 
 export function CustosView() {
   const { activePortfolioId } = usePortfolio();
   const [period, setPeriod] = useState<Period>('30d');
+  const [activeFundingTab, setActiveFundingTab] = useState<'usdt' | 'other'>('usdt');
   const { funding, isLoading: fundingLoading, error: fundingError, fetchFunding } = useFunding();
   const { fees, isLoading: feesLoading, error: feesError, fetchFees } = useFees();
   const { summary: txSummary, isLoading: txLoading, error: txError, fetchSummary } = useTransactions();
@@ -83,27 +99,29 @@ export function CustosView() {
       case '90d': case '1y': case 'all': periodValue = all !== 0 ? all : month; break;
     }
 
-    return { totalToday: today, totalWeek: week, periodTotal: periodValue };
+    return { today, week, month, all, periodValue };
   }, [usdtFunding, period]);
 
-  // Funding chart data
-  const fundingChartData = useMemo(() => {
-    let field: 'today' | 'week' | 'month' | 'total' = 'month';
-    switch (period) {
-      case '24h': field = 'today'; break;
-      case '7d': field = 'week'; break;
-      case '30d': field = 'month'; break;
-      case '90d': case '1y': case 'all': field = 'total'; break;
-    }
-    return usdtFunding.map(f => ({
-      symbol: f.symbol.replace('USDT', '').replace('USD', ''),
-      value: parseFloat(f[field]),
-      today: parseFloat(f.today),
-      week: parseFloat(f.week),
-      month: parseFloat(f.month),
-      total: parseFloat(f.total),
-    }));
-  }, [usdtFunding, period]);
+  // Waterfall chart data - shows funding evolution across periods
+  const fundingWaterfallData = useMemo(() => {
+    const periods: { key: 'today' | 'week' | 'month' | 'total'; label: string; shortLabel: string }[] = [
+      { key: 'today', label: 'Hoje', shortLabel: '24H' },
+      { key: 'week', label: '7 Dias', shortLabel: '7D' },
+      { key: 'month', label: '30 Dias', shortLabel: '30D' },
+      { key: 'total', label: 'Total', shortLabel: 'TUDO' },
+    ];
+
+    return periods.map(p => {
+      const value = usdtFunding.reduce((sum, f) => sum + parseFloat(f[p.key]), 0);
+      return {
+        period: p.label,
+        shortPeriod: p.shortLabel,
+        value,
+        absValue: Math.abs(value),
+        isPositive: value >= 0,
+      };
+    });
+  }, [usdtFunding]);
 
   // --- Fee calculations ---
   const feeBreakdown = useMemo(() => {
@@ -132,7 +150,7 @@ export function CustosView() {
   ], [periodMakerTotal, periodTakerTotal, feeBreakdown]);
 
   // --- Combined ---
-  const totalCosts = displayTotalFees + Math.abs(fundingTotals.periodTotal < 0 ? fundingTotals.periodTotal : 0);
+  const totalCosts = displayTotalFees + Math.abs(fundingTotals.periodValue < 0 ? fundingTotals.periodValue : 0);
 
   const impactOnPnl = useMemo(() => {
     const pnl = txSummary ? parseFloat(txSummary.total_pnl) : 0;
@@ -140,7 +158,17 @@ export function CustosView() {
     return (displayTotalFees / Math.abs(pnl)) * 100;
   }, [displayTotalFees, txSummary]);
 
-  const periodLabel = getPeriodLabel(period);
+  // Calculate funding trend
+  const fundingTrend = useMemo(() => {
+    if (fundingWaterfallData.length < 2) return { direction: 'neutral' as const, change: 0 };
+    const current = fundingWaterfallData[fundingWaterfallData.length - 1].value;
+    const previous = fundingWaterfallData[0].value;
+    const change = current - previous;
+    return {
+      direction: change > 0 ? 'positive' as const : change < 0 ? 'negative' as const : 'neutral' as const,
+      change
+    };
+  }, [fundingWaterfallData]);
 
   if (isLoading && !fees && funding.length === 0) {
     return <ViewLoading message="Carregando custos..." />;
@@ -157,264 +185,410 @@ export function CustosView() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <PageHeader title="Custos de Trading" subtitle="Acompanhe todas as taxas e custos das suas operacoes">
+    <div className="space-y-4 animate-fade-in">
+      <PageHeader title="Custos de Trading" subtitle="Acompanhe taxas e funding das suas operações">
         <PeriodSelector value={period} onChange={setPeriod} />
       </PageHeader>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <MetricCard
-          title={`Custos Totais (${periodLabel})`}
+      {/* Compact Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <CompactMetricCard
+          title="Custos Totais"
           value={`$${totalCosts.toFixed(2)}`}
-          icon={<Receipt className="w-5 h-5" />}
+          icon={<Receipt className="w-4 h-4" />}
           variant="error"
+          subtitle={getPeriodLabel(period)}
         />
-        <MetricCard
-          title={`Trading Fees (${periodLabel})`}
+        <CompactMetricCard
+          title="Trading Fees"
           value={`$${displayTotalFees.toFixed(2)}`}
-          icon={<Receipt className="w-5 h-5" />}
+          icon={<ArrowRightLeft className="w-4 h-4" />}
           variant="warning"
+          subtitle={getPeriodLabel(period)}
         />
-        <MetricCard
-          title={`Funding (${periodLabel})`}
-          value={`$${Math.abs(fundingTotals.periodTotal).toFixed(2)}`}
-          change={{ value: fundingTotals.periodTotal, percent: 0 }}
-          icon={<DollarSign className="w-5 h-5" />}
-          variant={fundingTotals.periodTotal >= 0 ? 'success' : 'error'}
+        <CompactMetricCard
+          title="Funding"
+          value={`$${Math.abs(fundingTotals.periodValue).toFixed(2)}`}
+          icon={<DollarSign className="w-4 h-4" />}
+          variant={fundingTotals.periodValue >= 0 ? 'success' : 'error'}
+          subtitle={fundingTotals.periodValue >= 0 ? 'Recebendo' : 'Pagando'}
+          trend={fundingTrend.direction}
+        />
+        <CompactMetricCard
+          title="Impacto no PnL"
+          value={impactOnPnl > 0 ? `${impactOnPnl.toFixed(1)}%` : '-'}
+          icon={<TrendingDown className="w-4 h-4" />}
+          variant={impactOnPnl > 10 ? 'error' : impactOnPnl > 5 ? 'warning' : 'default'}
+          subtitle={impactOnPnl > 0 ? 'do lucro' : 'sem impacto'}
         />
       </div>
 
-      {/* Impact on PnL */}
-      {impactOnPnl > 0 && (
-        <Card className="p-4 border border-status-error/30 bg-status-error-muted/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-status-error/20">
-                <TrendingDown className="w-5 h-5 text-status-error" />
-              </div>
-              <div>
-                <span className="text-sm text-text-secondary">Impacto no PnL</span>
-                <p className="text-lg font-bold font-mono text-status-error">
-                  {impactOnPnl.toFixed(1)}%
-                </p>
-              </div>
-            </div>
-            <p className="text-sm text-text-muted max-w-xs text-right">
-              Taxas de trading representam {impactOnPnl.toFixed(1)}% do seu PnL no periodo
-            </p>
-          </div>
-        </Card>
-      )}
-
       {/* Tabs */}
       <Tabs defaultValue="trading" className="space-y-4">
-        <TabsList className="bg-surface-card-alt border border-border-default">
-          <TabsTrigger value="trading" className="data-[state=active]:bg-action-primary data-[state=active]:text-white">
+        <TabsList className="bg-surface-card-alt border border-border-default h-9">
+          <TabsTrigger value="trading" className="text-xs data-[state=active]:bg-action-primary data-[state=active]:text-text-on-primary">
             Trading Fees
           </TabsTrigger>
-          <TabsTrigger value="funding" className="data-[state=active]:bg-action-primary data-[state=active]:text-white">
+          <TabsTrigger value="funding" className="text-xs data-[state=active]:bg-action-primary data-[state=active]:text-text-on-primary">
             Funding
           </TabsTrigger>
         </TabsList>
 
         {/* Tab: Trading Fees */}
-        <TabsContent value="trading">
+        <TabsContent value="trading" className="space-y-3">
           {displayTotalFees > 0 ? (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="lg:col-span-2 p-5 border border-border-default bg-surface-card">
-                <div className="mb-4">
-                  <h2 className="text-lg font-semibold text-text-primary">Resumo de Taxas ({periodLabel})</h2>
-                  <p className="text-sm text-text-secondary">Total acumulado de taxas pagas no periodo</p>
-                </div>
-                <div className="h-[300px] flex items-center justify-center">
-                  <div className="text-center">
-                    <p className="text-6xl font-bold text-status-error font-mono mb-2">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+              {/* Fee Summary Card */}
+              <Card className="lg:col-span-2 p-4 border border-border-default bg-surface-card">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h2 className="text-sm font-semibold text-text-primary">Taxas Acumuladas</h2>
+                    <p className="text-xs text-text-secondary">{getPeriodFullLabel(period)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-status-error font-mono">
                       ${displayTotalFees.toFixed(2)}
                     </p>
-                    <p className="text-text-secondary">Total em taxas ({periodLabel})</p>
                     {period !== 'all' && feeBreakdown.totalFees > 0 && (
-                      <p className="text-xs text-text-muted mt-2">
-                        Total historico: ${feeBreakdown.totalFees.toFixed(2)}
+                      <p className="text-xs text-text-muted">
+                        Total histórico: ${feeBreakdown.totalFees.toFixed(2)}
                       </p>
                     )}
                   </div>
                 </div>
+
+                {/* Fee trend visualization */}
+                <div className="h-[180px] mt-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={[
+                      { name: 'Maker', value: periodMakerTotal || feeBreakdown.makerTotal, type: 'Maker' },
+                      { name: 'Taker', value: periodTakerTotal || feeBreakdown.takerTotal, type: 'Taker' },
+                    ]}>
+                      <defs>
+                        <linearGradient id="feeGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="var(--status-error)" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="var(--status-error)" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+                      <XAxis dataKey="name" tick={{ fill: 'var(--chart-axis-label)', fontSize: 11 }} tickLine={false} axisLine={false} />
+                      <YAxis hide />
+                      <Tooltip content={({ active, payload }) => active && payload?.length ? (
+                        <div className="bg-surface-card border border-border-default rounded-lg p-2 shadow-lg">
+                          <p className="text-xs text-text-secondary">{payload[0].payload.type}</p>
+                          <p className="text-sm font-mono font-medium text-text-primary">${(payload[0].value as number).toFixed(2)}</p>
+                        </div>
+                      ) : null} />
+                      <Area type="monotone" dataKey="value" stroke="var(--status-error)" fillOpacity={1} fill="url(#feeGradient)" strokeWidth={2} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
               </Card>
 
-              <Card className="p-5 border border-border-default bg-surface-card">
-                <div className="mb-4">
-                  <h2 className="text-lg font-semibold text-text-primary">Breakdown ({periodLabel})</h2>
-                  <p className="text-sm text-text-secondary">Maker vs Taker fees</p>
-                </div>
-                <div className="h-[250px]">
+              {/* Fee Breakdown Card */}
+              <Card className="p-4 border border-border-default bg-surface-card">
+                <h2 className="text-sm font-semibold text-text-primary mb-1">Breakdown</h2>
+                <p className="text-xs text-text-secondary mb-3">Maker vs Taker</p>
+
+                <div className="h-[120px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2} dataKey="value">
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={35}
+                        outerRadius={55}
+                        paddingAngle={3}
+                        dataKey="value"
+                      >
                         {pieData.map((d, i) => <Cell key={i} fill={d.color} stroke="none" />)}
                       </Pie>
                       <Tooltip content={({ active, payload }) => active && payload?.length ? (
-                        <div className="bg-surface-card border border-border-default rounded-lg p-3 shadow-lg">
+                        <div className="bg-surface-card border border-border-default rounded-lg p-2 shadow-lg">
                           <div className="flex items-center gap-2 mb-1">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: payload[0].payload.color }} />
-                            <span className="text-sm text-text-secondary">{payload[0].name}</span>
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: payload[0].payload.color }} />
+                            <span className="text-xs text-text-secondary">{payload[0].name}</span>
                           </div>
                           <p className="text-sm font-mono font-medium text-text-primary">${(payload[0].value as number).toFixed(2)}</p>
                         </div>
                       ) : null} />
-                      <Legend verticalAlign="bottom" height={36} iconType="circle" formatter={(value) => <span className="text-sm text-text-secondary">{value}</span>} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="mt-4 space-y-3">
-                  <FeeRow label="Maker" value={periodMakerTotal || feeBreakdown.makerTotal} percent={feeBreakdown.makerPercent} color="bg-status-success" />
-                  <FeeRow label="Taker" value={periodTakerTotal || feeBreakdown.takerTotal} percent={feeBreakdown.takerPercent} color="bg-status-error" />
+
+                <div className="mt-2 space-y-2">
+                  <CompactFeeRow label="Maker" value={periodMakerTotal || feeBreakdown.makerTotal} percent={feeBreakdown.makerPercent} color="bg-status-success" />
+                  <CompactFeeRow label="Taker" value={periodTakerTotal || feeBreakdown.takerTotal} percent={feeBreakdown.takerPercent} color="bg-status-error" />
                 </div>
               </Card>
             </div>
           ) : (
-            <Card className="p-8 border border-border-default bg-surface-card text-center">
-              <p className="text-text-secondary">Nenhuma taxa registrada no periodo selecionado.</p>
+            <Card className="p-6 border border-border-default bg-surface-card text-center">
+              <p className="text-sm text-text-secondary">Nenhuma taxa registrada no período selecionado.</p>
             </Card>
           )}
         </TabsContent>
 
         {/* Tab: Funding */}
-        <TabsContent value="funding">
-          <div className="space-y-6">
-            {/* Funding status */}
-            <Card className={cn("p-5 border transition-all duration-200",
-              fundingTotals.periodTotal >= 0
-                ? "border-status-success/30 bg-status-success-muted"
-                : "border-status-error/30 bg-status-error-muted"
-            )}>
-              <div className="flex items-start justify-between">
+        <TabsContent value="funding" className="space-y-3">
+          {/* Funding Status Banner */}
+          <Card className={cn("p-3 border",
+            fundingTotals.periodValue >= 0
+              ? "border-status-success/30 bg-status-success-muted/30"
+              : "border-status-error/30 bg-status-error-muted/30"
+          )}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center",
+                  fundingTotals.periodValue >= 0 ? "bg-status-success/20" : "bg-status-error/20"
+                )}>
+                  {fundingTotals.periodValue >= 0
+                    ? <TrendingUp className="w-5 h-5 text-status-success" />
+                    : <TrendingDown className="w-5 h-5 text-status-error" />
+                  }
+                </div>
                 <div>
-                  <span className="text-sm font-medium text-text-secondary">Status ({periodLabel})</span>
-                  <p className={cn("text-2xl font-bold font-mono mt-1",
-                    fundingTotals.periodTotal >= 0 ? "text-status-success" : "text-status-error"
+                  <p className="text-xs text-text-secondary">Status do Funding</p>
+                  <p className={cn("text-lg font-bold font-mono",
+                    fundingTotals.periodValue >= 0 ? "text-status-success" : "text-status-error"
                   )}>
-                    {fundingTotals.periodTotal >= 0 ? 'FAVORAVEL' : 'DESFAVORAVEL'}
-                  </p>
-                  <p className="text-xs text-text-muted mt-1">
-                    {fundingTotals.periodTotal >= 0
-                      ? 'Voce esta recebendo mais funding do que pagando'
-                      : 'Voce esta pagando mais funding do que recebendo'}
+                    {fundingTotals.periodValue >= 0 ? 'FAVORÁVEL' : 'DESFAVORÁVEL'}
                   </p>
                 </div>
-                {fundingTotals.periodTotal >= 0
-                  ? <TrendingUp className="w-5 h-5 text-status-success" />
-                  : <TrendingDown className="w-5 h-5 text-status-error" />}
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-text-secondary">No período ({getPeriodLabel(period)})</p>
+                <p className={cn("text-xl font-bold font-mono",
+                  fundingTotals.periodValue >= 0 ? "text-status-success" : "text-status-error"
+                )}>
+                  {fundingTotals.periodValue >= 0 ? '+' : '-'}
+                  ${Math.abs(fundingTotals.periodValue).toFixed(2)}
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          {/* Funding Evolution Chart */}
+          {fundingWaterfallData.some(d => d.value !== 0) && (
+            <Card className="p-4 border border-border-default bg-surface-card">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-text-primary">Evolução do Funding</h2>
+                  <p className="text-xs text-text-secondary">Comparativo por período (USDT)</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs border-status-success/30 text-status-success">
+                    <TrendingUp className="w-3 h-3 mr-1" />
+                    Receber
+                  </Badge>
+                  <Badge variant="outline" className="text-xs border-status-error/30 text-status-error">
+                    <TrendingDown className="w-3 h-3 mr-1" />
+                    Pagar
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={fundingWaterfallData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+                    <XAxis
+                      dataKey="shortPeriod"
+                      tick={{ fill: 'var(--chart-axis-label)', fontSize: 11 }}
+                      tickLine={false}
+                      axisLine={{ stroke: 'var(--chart-grid)' }}
+                    />
+                    <YAxis
+                      tick={{ fill: 'var(--chart-axis-label)', fontSize: 11 }}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v) => `$${Math.abs(v).toFixed(0)}`}
+                    />
+                    <Tooltip content={({ active, payload, label }) => active && payload?.length ? (
+                      <div className="bg-surface-card border border-border-default rounded-lg p-3 shadow-lg">
+                        <p className="text-xs text-text-secondary mb-1">{label}</p>
+                        <p className={cn("text-sm font-mono font-medium",
+                          (payload[0].payload as { isPositive: boolean }).isPositive ? "text-status-success" : "text-status-error"
+                        )}>
+                          {(payload[0].payload as { isPositive: boolean }).isPositive ? '+' : '-'}
+                          ${(payload[0].payload as { absValue: number }).absValue.toFixed(4)}
+                        </p>
+                      </div>
+                    ) : null} />
+                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                      {fundingWaterfallData.map((d, i) => (
+                        <Cell key={i} fill={d.isPositive ? 'var(--status-success)' : 'var(--status-error)'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </Card>
+          )}
 
-            {/* Funding bar chart */}
-            {fundingChartData.length > 0 && (
-              <Card className="p-5 border border-border-default bg-surface-card">
-                <div className="mb-4">
-                  <h2 className="text-lg font-semibold text-text-primary">Funding por Ativo ({periodLabel})</h2>
-                  <p className="text-sm text-text-secondary">Valores em USDT - Contratos perpetuos margem USDT</p>
-                </div>
-                <div className="h-[350px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={fundingChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
-                      <XAxis dataKey="symbol" tick={{ fill: 'var(--chart-axis-label)', fontSize: 12 }} tickLine={false} axisLine={{ stroke: 'var(--chart-grid)' }} />
-                      <YAxis tick={{ fill: 'var(--chart-axis-label)', fontSize: 12 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v.toLocaleString()}`} />
-                      <Tooltip content={({ active, payload, label }) => active && payload?.length ? (
-                        <div className="bg-surface-card border border-border-default rounded-lg p-3 shadow-lg">
-                          <p className="text-sm font-medium text-text-primary mb-1">{label}</p>
-                          <p className="text-xs text-text-secondary mb-2">Funding ({periodLabel}) - USDT</p>
-                          <p className={cn("text-sm font-mono font-medium", (payload[0].value as number) >= 0 ? "text-status-success" : "text-status-error")}>
-                            ${(payload[0].value as number).toFixed(4)}
-                          </p>
-                        </div>
-                      ) : null} />
-                      <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                        {fundingChartData.map((d, i) => (
-                          <Cell key={i} fill={d.value >= 0 ? 'var(--status-success)' : 'var(--status-error)'} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </Card>
-            )}
-
-            {/* USDT Funding Breakdown */}
-            {usdtFunding.length > 0 && (
-              <div>
-                <h2 className="text-lg font-semibold text-text-primary mb-4">Breakdown por Ativo (USDT)</h2>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  {usdtFunding.map((asset) => {
-                    const displayValue = getFundingDisplayValue(asset, period);
-                    return (
-                      <Card key={asset.symbol} className={cn("p-5 border transition-all duration-200 card-hover",
-                        displayValue >= 0 ? "border-status-success/30 bg-status-success-muted/50" : "border-status-error/30 bg-status-error-muted/50"
-                      )}>
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-lg font-semibold text-text-primary">{asset.symbol.replace('USDT', '')}</h3>
-                          <Badge variant={displayValue >= 0 ? 'default' : 'destructive'}
-                            className={displayValue >= 0 ? "bg-status-success/20 text-status-success border-status-success/30" : ""}>
-                            {displayValue >= 0 ? 'RECEBENDO' : 'PAGANDO'}
-                          </Badge>
-                        </div>
-                        <div className="space-y-3">
-                          <FundingRow label="Hoje" value={parseFloat(asset.today)} currency="USDT" />
-                          <FundingRow label="Semana" value={parseFloat(asset.week)} currency="USDT" />
-                          <FundingRow label="Mes" value={parseFloat(asset.month)} currency="USDT" isHighlight />
-                          <FundingRow label="Total" value={parseFloat(asset.total)} currency="USDT" />
-                        </div>
-                      </Card>
-                    );
-                  })}
-                </div>
+          {/* Funding Tabs for USDT vs Other */}
+          {funding.length > 0 && (
+            <div className="space-y-3">
+              {/* Tab selector */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setActiveFundingTab('usdt')}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                    activeFundingTab === 'usdt'
+                      ? "bg-action-primary text-text-on-primary"
+                      : "bg-surface-card-alt text-text-secondary hover:text-text-primary"
+                  )}
+                >
+                  <DollarSign className="w-3.5 h-3.5" />
+                  USDT ({usdtFunding.length})
+                </button>
+                {otherFunding.length > 0 && (
+                  <button
+                    onClick={() => setActiveFundingTab('other')}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                      activeFundingTab === 'other'
+                        ? "bg-action-primary text-text-on-primary"
+                        : "bg-surface-card-alt text-text-secondary hover:text-text-primary"
+                    )}
+                  >
+                    <Wallet className="w-3.5 h-3.5" />
+                    Outras ({otherFunding.length})
+                  </button>
+                )}
               </div>
-            )}
 
-            {/* Other Currencies */}
-            {otherFunding.length > 0 && (
-              <div>
-                <h2 className="text-lg font-semibold text-text-primary mb-4">Funding em Outras Moedas</h2>
-                <p className="text-sm text-text-secondary mb-4">
-                  Estes valores sao pagos na moeda base do contrato (nao convertidos para USDT)
-                </p>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  {otherFunding.map((asset) => {
-                    const displayValue = getFundingDisplayValue(asset, period);
-                    return (
-                      <Card key={asset.symbol} className={cn("p-5 border transition-all duration-200 card-hover",
-                        displayValue >= 0 ? "border-status-success/30 bg-status-success-muted/50" : "border-status-error/30 bg-status-error-muted/50"
-                      )}>
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-2">
-                            <Bitcoin className="w-5 h-5 text-text-secondary" />
-                            <h3 className="text-lg font-semibold text-text-primary">{asset.symbol}</h3>
+              {/* USDT Funding Table */}
+              {activeFundingTab === 'usdt' && usdtFunding.length > 0 && (
+                <Card className="border border-border-default bg-surface-card overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-border-default bg-surface-card-alt/50">
+                          <th className="text-left py-2 px-3 text-xs font-medium text-text-secondary">Ativo</th>
+                          <th className="text-right py-2 px-3 text-xs font-medium text-text-secondary">24H</th>
+                          <th className="text-right py-2 px-3 text-xs font-medium text-text-secondary">7D</th>
+                          <th className="text-right py-2 px-3 text-xs font-medium text-text-secondary">30D</th>
+                          <th className="text-right py-2 px-3 text-xs font-medium text-text-secondary">Total</th>
+                          <th className="text-center py-2 px-3 text-xs font-medium text-text-secondary">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {usdtFunding
+                          .sort((a, b) => Math.abs(parseFloat(b.total)) - Math.abs(parseFloat(a.total)))
+                          .map((asset) => {
+                            const displayValue = getFundingDisplayValue(asset, period);
+                            return (
+                              <tr key={asset.symbol} className="border-b border-border-default/50 hover:bg-surface-card-alt/30 transition-colors">
+                                <td className="py-2 px-3">
+                                  <span className="text-sm font-medium text-text-primary">
+                                    {asset.symbol.replace('USDT', '').replace('USD', '')}
+                                  </span>
+                                  <span className="text-xs text-text-muted ml-1">/USDT</span>
+                                </td>
+                                <td className="py-2 px-3 text-right">
+                                  <span className={cn("text-xs font-mono", parseFloat(asset.today) >= 0 ? "text-status-success" : "text-status-error")}>
+                                    {parseFloat(asset.today) >= 0 ? '+' : ''}${parseFloat(asset.today).toFixed(2)}
+                                  </span>
+                                </td>
+                                <td className="py-2 px-3 text-right">
+                                  <span className={cn("text-xs font-mono", parseFloat(asset.week) >= 0 ? "text-status-success" : "text-status-error")}>
+                                    {parseFloat(asset.week) >= 0 ? '+' : ''}${parseFloat(asset.week).toFixed(2)}
+                                  </span>
+                                </td>
+                                <td className="py-2 px-3 text-right">
+                                  <span className={cn("text-xs font-mono font-medium", parseFloat(asset.month) >= 0 ? "text-status-success" : "text-status-error")}>
+                                    {parseFloat(asset.month) >= 0 ? '+' : ''}${parseFloat(asset.month).toFixed(2)}
+                                  </span>
+                                </td>
+                                <td className="py-2 px-3 text-right">
+                                  <span className={cn("text-xs font-mono", parseFloat(asset.total) >= 0 ? "text-status-success" : "text-status-error")}>
+                                    {parseFloat(asset.total) >= 0 ? '+' : ''}${parseFloat(asset.total).toFixed(2)}
+                                  </span>
+                                </td>
+                                <td className="py-2 px-3 text-center">
+                                  <Badge
+                                    variant="outline"
+                                    className={cn("text-xs",
+                                      displayValue >= 0
+                                        ? "border-status-success/30 text-status-success bg-status-success/10"
+                                        : "border-status-error/30 text-status-error bg-status-error/10"
+                                    )}
+                                  >
+                                    {displayValue >= 0 ? 'Recebendo' : 'Pagando'}
+                                  </Badge>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              )}
+
+              {/* Other Currencies Cards */}
+              {activeFundingTab === 'other' && otherFunding.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {otherFunding
+                    .sort((a, b) => Math.abs(parseFloat(b.total)) - Math.abs(parseFloat(a.total)))
+                    .map((asset) => {
+                      const displayValue = getFundingDisplayValue(asset, period);
+                      return (
+                        <Card key={asset.symbol} className={cn("p-3 border transition-all duration-200",
+                          displayValue >= 0
+                            ? "border-status-success/30 bg-status-success-muted/20"
+                            : "border-status-error/30 bg-status-error-muted/20"
+                        )}>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-lg bg-surface-card-alt flex items-center justify-center">
+                                <span className="text-xs font-bold text-text-secondary">{asset.currency}</span>
+                              </div>
+                              <div>
+                                <h3 className="text-sm font-semibold text-text-primary">{asset.symbol}</h3>
+                                <p className="text-xs text-text-muted">Funding na moeda base</p>
+                              </div>
+                            </div>
+                            <Badge
+                              variant="outline"
+                              className={cn("text-xs",
+                                displayValue >= 0
+                                  ? "border-status-success/30 text-status-success"
+                                  : "border-status-error/30 text-status-error"
+                              )}
+                            >
+                              {displayValue >= 0 ? 'Recebendo' : 'Pagando'}
+                            </Badge>
                           </div>
-                          <Badge variant={displayValue >= 0 ? 'default' : 'destructive'}
-                            className={displayValue >= 0 ? "bg-status-success/20 text-status-success border-status-success/30" : ""}>
-                            {displayValue >= 0 ? 'RECEBENDO' : 'PAGANDO'}
-                          </Badge>
-                        </div>
-                        <div className="space-y-3">
-                          <FundingRow label="Hoje" value={parseFloat(asset.today)} currency={asset.currency} />
-                          <FundingRow label="Semana" value={parseFloat(asset.week)} currency={asset.currency} />
-                          <FundingRow label="Mes" value={parseFloat(asset.month)} currency={asset.currency} isHighlight />
-                          <FundingRow label="Total" value={parseFloat(asset.total)} currency={asset.currency} />
-                        </div>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
 
-            {funding.length === 0 && (
-              <Card className="p-8 border border-border-default bg-surface-card text-center">
-                <p className="text-text-secondary">Nenhum dado de funding disponivel.</p>
-              </Card>
-            )}
-          </div>
+                          <div className="grid grid-cols-2 gap-2 mt-3">
+                            <CompactFundingCell label="24H" value={parseFloat(asset.today)} currency={asset.currency} />
+                            <CompactFundingCell label="7D" value={parseFloat(asset.week)} currency={asset.currency} />
+                            <CompactFundingCell label="30D" value={parseFloat(asset.month)} currency={asset.currency} highlight />
+                            <CompactFundingCell label="Total" value={parseFloat(asset.total)} currency={asset.currency} />
+                          </div>
+                        </Card>
+                      );
+                    })}
+                </div>
+              )}
+
+              {activeFundingTab === 'usdt' && usdtFunding.length === 0 && (
+                <Card className="p-6 border border-border-default bg-surface-card text-center">
+                  <p className="text-sm text-text-secondary">Nenhum funding em USDT disponível.</p>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {funding.length === 0 && (
+            <Card className="p-6 border border-border-default bg-surface-card text-center">
+              <p className="text-sm text-text-secondary">Nenhum dado de funding disponível.</p>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>
@@ -433,52 +607,107 @@ function getFundingDisplayValue(asset: { today: string; week: string; month: str
   }
 }
 
-interface FundingRowProps {
-  label: string;
-  value: number;
-  currency: string;
-  isHighlight?: boolean;
+// Compact Metric Card Component
+interface CompactMetricCardProps {
+  title: string;
+  value: string;
+  subtitle?: string;
+  icon: React.ReactNode;
+  variant?: 'default' | 'success' | 'error' | 'warning';
+  trend?: 'positive' | 'negative' | 'neutral';
 }
 
-function FundingRow({ label, value, currency, isHighlight }: FundingRowProps) {
-  const symbol = getCurrencySymbol(currency);
-  const isUSDT = currency === 'USDT';
+function CompactMetricCard({ title, value, subtitle, icon, variant = 'default', trend }: CompactMetricCardProps) {
+  const variants = {
+    default: 'border-border-default bg-surface-card',
+    success: 'border-status-success/30 bg-status-success-muted/20',
+    error: 'border-status-error/30 bg-status-error-muted/20',
+    warning: 'border-yellow-500/30 bg-yellow-500/10',
+  };
+
+  const iconColors = {
+    default: 'text-text-secondary bg-surface-card-alt',
+    success: 'text-status-success bg-status-success/20',
+    error: 'text-status-error bg-status-error/20',
+    warning: 'text-yellow-500 bg-yellow-500/20',
+  };
 
   return (
-    <div className="flex items-center justify-between">
-      <span className={cn("text-sm", isHighlight ? "text-text-primary font-medium" : "text-text-secondary")}>{label}</span>
-      <span className={cn("text-sm font-mono font-medium", value >= 0 ? "text-status-success" : "text-status-error")}>
-        {isUSDT ? (
-          `$${Math.abs(value).toFixed(4)}`
-        ) : (
-          <span className="flex items-center gap-1">
-            <span className="text-text-muted">{symbol}</span>
-            {Math.abs(value).toFixed(8)} {currency}
-          </span>
+    <Card className={cn("p-3 border", variants[variant])}>
+      <div className="flex items-start justify-between">
+        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", iconColors[variant])}>
+          {icon}
+        </div>
+        {trend && trend !== 'neutral' && (
+          <div className={cn("flex items-center", trend === 'positive' ? 'text-status-success' : 'text-status-error')}>
+            {trend === 'positive' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+          </div>
         )}
-      </span>
-    </div>
+      </div>
+      <div className="mt-2">
+        <p className="text-xs text-text-secondary">{title}</p>
+        <p className={cn("text-lg font-bold font-mono",
+          variant === 'error' ? 'text-status-error' :
+            variant === 'success' ? 'text-status-success' :
+              'text-text-primary'
+        )}>
+          {value}
+        </p>
+        {subtitle && <p className="text-xs text-text-muted">{subtitle}</p>}
+      </div>
+    </Card>
   );
 }
 
-interface FeeRowProps {
+// Compact Fee Row
+interface CompactFeeRowProps {
   label: string;
   value: number;
   percent: number;
   color: string;
 }
 
-function FeeRow({ label, value, percent, color }: FeeRowProps) {
+function CompactFeeRow({ label, value, percent, color }: CompactFeeRowProps) {
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2">
-        <div className={cn("w-3 h-3 rounded-full", color)} />
-        <span className="text-sm text-text-secondary">{label}</span>
+        <div className={cn("w-2.5 h-2.5 rounded-full", color)} />
+        <span className="text-xs text-text-secondary">{label}</span>
       </div>
       <div className="text-right">
-        <span className="text-sm font-mono font-medium text-text-primary">${value.toFixed(2)}</span>
-        <span className="text-xs text-text-muted ml-2">{percent.toFixed(1)}%</span>
+        <span className="text-xs font-mono font-medium text-text-primary">${value.toFixed(2)}</span>
+        <span className="text-xs text-text-muted ml-1">({percent.toFixed(0)}%)</span>
       </div>
+    </div>
+  );
+}
+
+// Compact Funding Cell for grid layout
+interface CompactFundingCellProps {
+  label: string;
+  value: number;
+  currency: string;
+  highlight?: boolean;
+}
+
+function CompactFundingCell({ label, value, currency, highlight }: CompactFundingCellProps) {
+  const symbol = getCurrencySymbol(currency);
+  const isUSDT = currency === 'USDT';
+
+  return (
+    <div className={cn(
+      "rounded-md p-2",
+      highlight ? "bg-surface-card-alt/70" : "bg-surface-card-alt/30"
+    )}>
+      <p className="text-xs text-text-muted mb-0.5">{label}</p>
+      <p className={cn("text-xs font-mono font-medium truncate",
+        value >= 0 ? "text-status-success" : "text-status-error"
+      )}>
+        {value >= 0 ? '+' : '-'}
+        {isUSDT ? '$' : symbol}
+        {Math.abs(value).toFixed(isUSDT ? 2 : 6)}
+        {!isUSDT && <span className="text-text-muted ml-0.5">{currency}</span>}
+      </p>
     </div>
   );
 }

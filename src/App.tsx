@@ -25,21 +25,12 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  AlertCircle,
+
   Sun,
   Moon,
   RefreshCw,
 } from 'lucide-react';
 
-const PAGE_TITLES: Record<View, string> = {
-  portfolio: 'Portfolio',
-  custos: 'Custos de Trading',
-  historico: 'Historico de Trades',
-  posicoes: 'Posicoes Abertas',
-  auth: 'Autenticacao',
-  landing: 'Inicio',
-  onboarding: 'Boas Vindas',
-};
 
 interface NavItem {
   id: View;
@@ -190,7 +181,7 @@ export default function App() {
       {/* Mobile Overlay */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-surface-overlay z-40 lg:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
@@ -208,10 +199,10 @@ export default function App() {
 
       <main className={cn(
         "transition-all duration-300 ease-out min-h-screen",
-        sidebarCollapsed ? "lg:ml-20" : "lg:ml-64"
+        sidebarCollapsed ? "lg:ml-20" : "lg:ml-[240px]"
       )}>
         <Header
-          title={PAGE_TITLES[currentView]}
+          title=""
           theme={theme}
           onThemeToggle={toggleTheme}
           timeAgo={timeAgo}
@@ -243,7 +234,7 @@ function MobileHeader({ onMenuToggle, isOpen }: MobileHeaderProps) {
     <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-surface-sidebar border-b border-border-default z-30 flex items-center justify-between px-4">
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded-lg bg-action-primary flex items-center justify-center">
-          <TrendingUp className="w-5 h-5 text-white" />
+          <TrendingUp className="w-5 h-5 text-text-on-primary" />
         </div>
         <span className="font-semibold text-text-primary">Visor Crypto</span>
       </div>
@@ -264,149 +255,144 @@ interface SidebarProps {
   onLogout: () => void;
 }
 
-function Sidebar({ currentView, onNavClick, collapsed, onCollapseToggle, mobileOpen, onLogout }: SidebarProps) {
-  // Access portfolio context here
-  const { portfolios, activePortfolioId } = usePortfolio();
 
+function Sidebar({ currentView, onNavClick, collapsed, onCollapseToggle, mobileOpen, onLogout }: SidebarProps) {
+  const { portfolios, activePortfolioId } = usePortfolio();
   const connected = portfolios.length > 0;
+
   // Determine display info
   let displayName = 'Sem Conexão';
-  let exchangeCode = 'NC'; // Not Connected
 
   if (activePortfolioId === null && connected) {
     displayName = 'Todos os Ativos';
-    exchangeCode = 'ALL';
   } else if (activePortfolioId) {
     const active = portfolios.find(p => p.id === activePortfolioId);
     if (active) {
       displayName = active.label || active.exchange;
-      exchangeCode = active.exchange.substring(0, 2).toUpperCase();
     }
   }
 
   return (
     <aside className={cn(
-      "fixed left-0 top-0 h-screen bg-surface-sidebar border-r border-border-default z-50 transition-all duration-300 ease-out flex flex-col",
-      collapsed ? "w-20" : "w-64",
+      "fixed left-0 top-0 h-screen bg-surface-sidebar z-50 transition-all duration-300 ease-out flex flex-col border-r border-border-default",
+      collapsed ? "w-20" : "w-[240px]",
       mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
     )}>
-      {/* Logo */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-border-default flex-shrink-0">
+      {/* Logo Area */}
+      <div className="h-24 flex items-center justify-between px-6 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-action-primary flex items-center justify-center flex-shrink-0">
-            <TrendingUp className="w-5 h-5 text-white" />
+          <div className="w-8 h-8 rounded-lg bg-none flex items-center justify-center flex-shrink-0">
+            {/* Using a simpler icon/logo representation if needed, or keeping the existing one but styled differently */}
+            <TrendingUp className="w-6 h-6 text-action-primary" />
           </div>
-          {!collapsed && <span className="font-semibold text-text-primary whitespace-nowrap">Visor Crypto</span>}
+          {!collapsed && <span className="text-xl font-bold text-text-primary tracking-tight">VisorCrypto</span>}
         </div>
-        <Button variant="ghost" size="icon" onClick={onCollapseToggle} className="hidden lg:flex h-8 w-8">
-          {collapsed ? <ChevronRight className="w-4 h-4 text-text-muted" /> : <ChevronLeft className="w-4 h-4 text-text-muted" />}
+
+        {/* Collapse Toggle */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onCollapseToggle}
+          className={cn(
+            "text-text-muted hover:text-text-primary hidden lg:flex",
+            collapsed ? "w-full justify-center" : ""
+          )}
+        >
+          {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </Button>
       </div>
 
       {/* Navigation */}
-      <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
-        {/* Portfolio Selector in Sidebar */}
-        <div className="mb-4">
+      <nav className="flex-1 px-4 space-y-6 overflow-y-auto custom-scrollbar">
+
+        {/* Portfolio Section / "Context" */}
+        <div className="mb-8">
           <PortfolioDrawer>
             <button className={cn(
-              "w-full flex items-center gap-3 p-2 rounded-xl border border-border-default/40 bg-surface-card hover:bg-surface-card-alt hover:border-border-default transition-all duration-200 group text-left",
-              collapsed ? "justify-center px-0 bg-transparent border-transparent" : "px-3"
+              "w-full group outline-none",
+              collapsed ? "flex justify-center" : ""
             )}>
-              <div className={cn(
-                "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
-                connected ? "bg-surface-sidebar border border-border shadow-sm" : "bg-status-error/10"
-              )}>
-                {connected ? (
-                  activePortfolioId === null ? <Wallet className="w-5 h-5 text-action-primary" /> : <span className="text-xs font-bold text-text-secondary">{exchangeCode}</span>
-                ) : (
-                  <AlertCircle className="w-5 h-5 text-status-error" />
-                )}
-              </div>
-
-              {!collapsed && (
-                <div className="flex-1 min-w-0">
-                  <span className="block text-sm font-semibold text-text-primary truncate">
-                    {displayName}
-                  </span>
-                  <span className="flex items-center gap-1 text-xs text-text-muted group-hover:text-text-secondary transition-colors truncate">
-                    {connected ? 'Trocar carteira' : 'Conectar agora'}
-                    <ChevronRight className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </span>
+              {!collapsed ? (
+                <div className="flex items-center justify-between px-3 py-3 rounded-2xl bg-surface-card border border-border-default hover:border-action-primary/30 transition-all group-hover:bg-surface-card-alt">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-action-primary/10 flex items-center justify-center text-action-primary">
+                      <Wallet className="w-4 h-4" />
+                    </div>
+                    <div className="text-left min-w-0">
+                      <span className="block text-xs text-text-muted font-medium">Carteira Atual</span>
+                      <span className="block text-sm font-semibold text-text-primary truncate">{displayName}</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-text-muted group-hover:text-text-primary transition-colors" />
+                </div>
+              ) : (
+                <div className="w-10 h-10 rounded-xl bg-surface-card border border-border-default flex items-center justify-center text-action-primary group-hover:bg-surface-card-alt transition-colors">
+                  <Wallet className="w-5 h-5" />
                 </div>
               )}
             </button>
           </PortfolioDrawer>
         </div>
 
-        {/* Divider */}
-        <div className="h-px bg-border-default mx-2 my-2" />
+        {/* Menu Items */}
+        <div className="space-y-2">
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            const isActive = currentView === item.id;
 
-        {NAV_ITEMS.map((item) => {
-          const Icon = item.icon;
-          const isActive = currentView === item.id;
-          return (
-            <NavButton
-              key={item.id}
-              icon={<Icon className={cn(
-                "w-5 h-5 flex-shrink-0",
-                isActive ? "text-action-primary" : "text-text-secondary group-hover:text-text-primary"
-              )} />}
-              label={item.label}
-              isActive={isActive}
-              collapsed={collapsed}
-              onClick={() => onNavClick(item.id)}
-            />
-          );
-        })}
+            return (
+              <button
+                key={item.id}
+                onClick={() => onNavClick(item.id)}
+                className={cn(
+                  "w-full flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-200 group relative",
+                  collapsed ? "justify-center" : "",
+                  isActive
+                    ? "text-text-primary"
+                    : "text-text-muted hover:text-text-primary hover:bg-surface-card"
+                )}
+              >
+                {/* Active Indicator Line (Left) */}
+                {isActive && !collapsed && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-action-primary rounded-r-full shadow-glow" />
+                )}
+
+                <Icon className={cn(
+                  "w-5 h-5 transition-colors flex-shrink-0",
+                  isActive ? "text-action-primary" : "text-text-muted group-hover:text-text-primary"
+                )} />
+
+                {!collapsed && (
+                  <span className="text-sm font-medium">
+                    {item.label}
+                  </span>
+                )}
+
+                {/* Active Glow/Bg (Optional, keeping minimal to match SafePay generally having clean bgs) */}
+                {isActive && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-action-primary/10 to-transparent rounded-xl opacity-50 pointer-events-none" />
+                )}
+              </button>
+            );
+          })}
+        </div>
       </nav>
 
-      {/* Footer Actions */}
-      <div className={cn(
-        "p-3 border-t border-border-default flex-shrink-0",
-        collapsed ? "space-y-2" : "space-y-1"
-      )}>
-        <NavButton
-          icon={<LogOut className="w-5 h-5 flex-shrink-0" />}
-          label="Sair"
-          isActive={false}
-          collapsed={collapsed}
+      {/* Footer / Logout */}
+      <div className="p-6 border-t border-border-default mt-auto">
+        <button
           onClick={onLogout}
-        />
+          className={cn(
+            "w-full flex items-center gap-4 px-3 py-3 rounded-xl text-text-muted hover:text-status-error hover:bg-status-error/10 transition-all duration-200 group",
+            collapsed ? "justify-center" : ""
+          )}
+        >
+          <LogOut className="w-5 h-5 flex-shrink-0" />
+          {!collapsed && <span className="text-sm font-medium">Sair</span>}
+        </button>
+
       </div>
     </aside>
-  );
-}
-
-// Navigation Button Component
-interface NavButtonProps {
-  icon: React.ReactNode;
-  label: string;
-  isActive: boolean;
-  collapsed: boolean;
-  onClick: () => void;
-}
-
-function NavButton({ icon, label, isActive, collapsed, onClick }: NavButtonProps) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 hover:bg-surface-card-alt group",
-        isActive
-          ? "bg-action-primary-muted text-action-primary border border-action-primary/30"
-          : "text-text-secondary border border-transparent"
-      )}
-    >
-      {icon}
-      {!collapsed && (
-        <span className={cn(
-          "text-sm font-medium whitespace-nowrap",
-          isActive ? "text-action-primary" : "text-text-secondary group-hover:text-text-primary"
-        )}>
-          {label}
-        </span>
-      )}
-    </button>
   );
 }
 
@@ -430,7 +416,7 @@ function Header({ title, theme, onThemeToggle, onMobileMenuOpen, onLogout, conne
         <Button variant="ghost" size="icon" onClick={onMobileMenuOpen} className="lg:hidden">
           <Menu className="w-5 h-5" />
         </Button>
-        <h1 className="text-xl font-semibold text-text-primary">{title}</h1>
+        {title && <h1 className="text-xl font-semibold text-text-primary">{title}</h1>}
       </div>
       <div className="flex items-center gap-4">
         {/* Connection status simplified for header since selector is in sidebar */}
@@ -438,8 +424,8 @@ function Header({ title, theme, onThemeToggle, onMobileMenuOpen, onLogout, conne
           {connected ? (
             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-surface-card-alt border border-border-default/50" title={`Conectado: ${displayLabel}`}>
               <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500 shadow-[0_0_10px_rgba(74,222,128,0.7)]"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-status-success opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-status-success shadow-success"></span>
               </span>
             </div>
           ) : (

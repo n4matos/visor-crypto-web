@@ -18,7 +18,7 @@ interface LandingViewProps {
 
 export function LandingView({ onLogin, onRegister }: LandingViewProps) {
     return (
-        <div className="min-h-screen bg-surface-page text-text-primary overflow-x-hidden selection:bg-[rgba(124,92,252,0.3)] selection:text-text-primary">
+        <div className="min-h-screen bg-surface-page text-text-primary overflow-x-hidden selection:bg-action-primary/30 selection:text-text-primary">
             {/* Navigation */}
             <nav className="fixed top-0 left-0 right-0 z-50 bg-surface-page/80 backdrop-blur-md border-b border-border-default">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -49,8 +49,8 @@ export function LandingView({ onLogin, onRegister }: LandingViewProps) {
             <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
                 {/* Background Gradients */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-7xl pointer-events-none">
-                    <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full blur-[128px] bg-[rgba(124,92,252,0.2)]" />
-                    <div className="absolute bottom-0 right-1/4 w-96 h-96 rounded-full blur-[128px] bg-[rgba(167,139,250,0.1)]" />
+                    <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full blur-[128px] bg-action-primary/20" />
+                    <div className="absolute bottom-0 right-1/4 w-96 h-96 rounded-full blur-[128px] bg-accent-purple-light/10" />
                 </div>
 
                 <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -86,7 +86,7 @@ export function LandingView({ onLogin, onRegister }: LandingViewProps) {
 
                     {/* Stats Preview */}
                     <div className="mt-20 relative mx-auto max-w-5xl">
-                        <div className="absolute -inset-1 bg-gradient-to-r from-[rgba(124,92,252,0.5)] to-[rgba(167,139,250,0.5)] rounded-2xl blur opacity-20" />
+                        <div className="absolute -inset-1 bg-gradient-to-r from-action-primary/50 to-accent-purple-light/50 rounded-2xl blur opacity-20" />
                         <div className="relative rounded-xl bg-surface-card border border-border-default overflow-hidden shadow-2xl">
                             <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border-default">
                                 <div className="p-6 md:p-8">
@@ -163,7 +163,7 @@ export function LandingView({ onLogin, onRegister }: LandingViewProps) {
 
             {/* CTA Section */}
             <section className="py-24 relative overflow-hidden">
-                <div className="absolute inset-0 bg-[rgba(124,92,252,0.05)]" />
+                <div className="absolute inset-0 bg-action-primary/5" />
                 <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                     <h2 className="text-3xl md:text-5xl font-bold text-text-primary mb-6">
                         Pronto para evoluir seu trading?
@@ -236,7 +236,7 @@ export function LandingView({ onLogin, onRegister }: LandingViewProps) {
 
 function FeatureCard({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
     return (
-        <div className="p-6 rounded-2xl bg-surface-card border border-border-default hover:border-[rgba(124,92,252,0.5)] transition-all duration-300 hover:shadow-glow group">
+        <div className="p-6 rounded-2xl bg-surface-card border border-border-default hover:border-action-primary/50 transition-all duration-300 hover:shadow-glow group">
             <div className="w-12 h-12 rounded-lg bg-surface-elevated flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
                 {icon}
             </div>
